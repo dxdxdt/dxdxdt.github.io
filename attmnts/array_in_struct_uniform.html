@@ -1,0 +1,169 @@
+<html>
+<head>
+  <meta charset='utf-8'/>
+  <script type='x-glsl/main.vert' id='shader_main_vert'>
+    attribute vec2 a_pos;
+
+
+    void main () {
+      gl_Position = vec4(a_pos, 0.0, 1.0);
+    }
+  </script>
+  <script type='x-glsl/main.frag' id='shader_main_frag'>
+    precision mediump float;
+
+    struct Set {
+      vec3 color;
+      float arr[3];
+    };
+
+    uniform Set u_s;
+
+
+    void main () {
+      gl_FragColor = vec4(u_s.color * u_s.arr[0], 1.0);
+      // gl_FragColor = vec4(u_s.color * vec3(1.0, 0.0, 0.0), 1.0);
+    }
+  </script>
+  <script type='application/javascript'>
+    (function () {
+      "use strict";
+
+      window.addEventListener('load', function () {
+        var canvas = document.getElementsByTagName('canvas')[0];
+        var gl = canvas.getContext('webgl');
+        var prog;
+        var arr;
+        var buf;
+        var drawFunc;
+        var renderDim = {
+          w: canvas.width,
+          h: canvas.height
+        };
+        let compShader = function (type, src) {
+          let ret = gl.createShader(type);
+          let log, status;
+
+          gl.shaderSource(ret, src);
+          gl.compileShader(ret);
+          status = gl.getShaderParameter(ret, gl.COMPILE_STATUS);
+          log = gl.getShaderInfoLog(ret);
+          if (log) {
+            let sb = [
+              "Log occurred compiling ",
+              (function () {
+                switch (type) {
+                case gl.VERTEX_SHADER: return 'vertex';
+                case gl.FRAGMENT_SHADER: return 'fragment';
+                }
+                return 'unknown';
+              })(),
+              " shader:" ];
+
+            console.group(sb.join(''));
+            if (status) {
+              console.info(log);
+            }
+            else {
+              console.error(log);
+            }
+            console.groupEnd();
+          }
+
+          if (status) {
+            return ret;
+          }
+          return null;
+        };
+
+        {
+          // Load program.
+          let vert, frag, status, log;
+
+          vert = compShader(gl.VERTEX_SHADER, document.getElementById('shader_main_vert').text);
+          frag = compShader(gl.FRAGMENT_SHADER, document.getElementById('shader_main_frag').text);
+
+          prog = gl.createProgram();
+          gl.attachShader(prog, vert);
+          gl.attachShader(prog, frag);
+
+          gl.bindAttribLocation(prog, 0, 'a_pos');
+          gl.linkProgram(prog);
+          status = gl.getProgramParameter(prog, gl.LINK_STATUS);
+          log = gl.getProgramInfoLog(prog);
+          if (log) {
+            console.group("Log occurred linking program:");
+            if (status) {
+              console.info(log);
+            }
+            else {
+              console.error(log);
+            }
+            console.groupEnd();
+          }
+
+          gl.useProgram(prog);
+          gl.uniform1f(gl.getUniformLocation(prog, 'u_s.arr[0]'), 1);
+          gl.uniform1f(gl.getUniformLocation(prog, 'u_s.arr[1]'), 0.8);
+          gl.uniform1f(gl.getUniformLocation(prog, 'u_s.arr[2]'), 0.6);
+          gl.uniform3f(gl.getUniformLocation(prog, 'u_s.color'), 1, 1, 1);
+
+          gl.useProgram(null);
+        }
+        {
+          // Load model.
+          arr = {
+            vertex: new Float32Array([
+              -1.0, 1.0,
+              1.0, 1.0,
+              1.0, -1.0,
+              -1.0, -1.0]),
+            index: new Uint16Array([
+              3, 0, 2,
+              2, 0, 1])};
+          buf = {
+            vertex: gl.createBuffer(),
+            index: gl.createBuffer()
+          };
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, buf.vertex);
+          gl.bufferData(gl.ARRAY_BUFFER, arr.vertex, gl.STATIC_DRAW);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf.index);
+          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, arr.index, gl.STATIC_DRAW);
+        }
+        {
+          // Initial states
+          gl.enableVertexAttribArray(0);
+        }
+
+        drawFunc = function () {
+          gl.viewport(0, 0, renderDim.w, renderDim.h);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+
+          gl.useProgram(prog);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, buf.vertex);
+          gl.vertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 0, 0);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf.index);
+
+          gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+          gl.flush();
+
+          requestAnimationFrame(drawFunc);
+        };
+        requestAnimationFrame(drawFunc);
+      }, false);
+    })();
+  </script>
+<body style="background-color: darkblue; color: white;">
+  <h1>This canvas should be white</h1>
+  <p>
+    <canvas width='800' height='600'></canvas>
+  </p>
+  <p>
+    Native version: <a href="array_in_struct_uniform.zip">array_in_struct_uniform.zip</a>
+  </p>
+</body>
+</head>
+</html>
