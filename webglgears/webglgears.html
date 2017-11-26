@@ -4,34 +4,46 @@
   <meta charset="utf-8" />
   <title>webglgears</title>
   <script type='application/javascript' src="js/gl-matrix-min.js"></script>
-  <script type='application/javascript' src="js/webglgears.js"></script>
+  <script type='application/javascript' src="js/webglgears-min.js"></script>
   <script type='application/javascript'>
     (function () {
       "use strict";
       var surface;
       var gl;
       var wg;
+      var uriParam;
 
+      // External access to WebGL context, canvas element, and WebGLGears instance
+      document.webglgears = {};
       window.addEventListener('load', function () {
         let optCtxInfo;
 
+        uriParam = {
+          antialias: false,
+          verbose: false,
+          info: false
+        };
+        // TODO: Parse URI params
+
         // Prep canvas
-        surface = document.getElementById('surface');
+        document.webglgears.surface = surface = document.getElementById('surface');
         surface.width = window.innerWidth;
         surface.height = window.innerHeight;
 
         // Prep WebGL context
         optCtxInfo = WebGLGears.optimalContextParams();
-        optCtxInfo.attr.antialias = false; // TODO
-        gl = surface.getContext(optCtxInfo.type, optCtxInfo.attr);
+        optCtxInfo.attr.antialias = uriParam.antialias;
+        document.webglgears.gl = gl = surface.getContext(optCtxInfo.type, optCtxInfo.attr);
 
         // Prep WebGLGears instance
-        wg = new WebGLGears();
-        wg.verbose = true; // TODO
+        document.webglgears.wg = wg = new WebGLGears();
+        wg.verbose = uriParam.verbose;
         wg
-          .attach(window, gl)
+          .attach(gl)
           .reshape(window.innerWidth, window.innerHeight);
-        wg.info(); // TODO
+        if (uriParam.info) {
+          wg.info();
+        }
 
         window.addEventListener('resize', function () {
           surface.width = window.innerWidth;

@@ -206,6 +206,9 @@ var WebGLGears = (function () {
     __f(buf.normal);
     __f(buf.index);
   };
+
+  // Default Print Callback function.
+  // Prints the info on the browser's console.
   defaultPrintCallback = function (head, body, e) {
     let f = e ? console.error : console.info;
 
@@ -224,7 +227,12 @@ var WebGLGears = (function () {
       }
     }
   };
+
+  // WebGLGears.VertexBuilder
+  // Constructs the arrays for GL_ARRAY_BUFFERs from vertices passed by
+  // glBegin(), glEnd(), glNormal(), glVertex() equivalent calls.
   __VertexBuilder = (function () {
+    // glBegin() modes. Only modes used in glxgears are implemented.
     var __MODE__ = {
       NONE: 0,
       QUADS: 1,
@@ -235,32 +243,51 @@ var WebGLGears = (function () {
 
     return class VertexBuilder {
       constructor () {
+        // Output array
         var __arr = null;
+        // State members
         var __state = {
-          mode: __MODE__.NONE,
-          normal: new Float32Array(3),
+          mode: __MODE__.NONE, // Mode initiated by glBegin() call
+          normal: new Float32Array([0, 0, 1]), // Current normal vector
           ptr: {
             index: null
           },
           idx: {
-            vertex: null,
-            index: null
+            vertex: null, // Next index in the output vertex/normal array
+            index: null // Next index in the output index array
           },
           tmp: {
-            idx: null,
-            vertex: null,
-            normal: null,
+            idx: null, // Next index in the array `__state.tmp.vertex`
+            vertex: null, // Temporary array
+            normal: null, // Temporary array
+            // First strip indicator
+            // Set true on glBegin(GL_QUAD_STRIP) call. Set false on first
+            // quad is completed.
             firstStrip: null
           }
         };
 
         var __default;
 
+        // Default value selector used in normal(), vertex()
         __default = function (org, def) {
           return isFinite(org) ? org : def;
         };
 
         Object.defineProperties(this, {
+          // Allocate the output array by the number of vertex() calls
+          // `alloc` must be an object containing following properties with
+          // integer values specifying the number of vertex() calls:
+          //   QUADS, QUAD_STRIP
+          // Example: the call with following object results in allocating
+          // an output array for a total of 5 QUADS:
+          //   {
+          //     QUADS: 12, // 3
+          //     QUAD_STRIP: 6 // 2
+          //   }
+          //
+          // Calling this method will reset the instance.
+          // The array that was being constructed will be lost.
           allocCalls: {
             value: function (alloc) {
               const ALLOC = {
@@ -276,11 +303,16 @@ var WebGLGears = (function () {
                 index: new Uint16Array(NB_INDEX)
               };
               __state.idx.vertex = __state.idx.index = __state.ptr.index = 0;
+              [__state.normal[0] = __state.normal[0] = __state.normal[0]] = [0, 0, 1];
+              this.end();
 
               return this;
             },
             configurable: true
           },
+
+          // glBegin() equivalent
+          // `mode`: Accepts the member of `VertexBuilder.MODE`
           begin: {
             value: function (mode) {
               switch(mode) {
@@ -305,6 +337,8 @@ var WebGLGears = (function () {
             },
             configurable: true
           },
+
+          // glEnd() equivalent
           end: {
             value: function () {
               __state.mode = __state.tmp.vertex = __state.tmp.normal = __state.tmp.idx = __state.tmp.firstStrip = null;
@@ -312,6 +346,10 @@ var WebGLGears = (function () {
             },
             configurable: true
           },
+
+          // glVertex() equivalent
+          // Note that the method serves the all forms of glVertex() function.
+          // Calls with 2/3/4 calls are allowed.
           vertex: {
             value: function (x, y, z, w) {
               z = __default(z, 0);
@@ -459,6 +497,8 @@ var WebGLGears = (function () {
             },
             configurable: true
           },
+
+          // glNormal() equivalent
           normal: {
             value: function (x, y, z) {
               __state.normal[0] = x;
@@ -469,6 +509,12 @@ var WebGLGears = (function () {
             },
             configurable: true
           },
+
+          // Access to the output array
+          // The output array: {
+          //   vertex: Float32Array
+          //   normal: Float32Array
+          //   index: Uint16Array
           array: {
             get: function () {
               return __arr;
@@ -484,6 +530,9 @@ var WebGLGears = (function () {
     };
   })();
 
+  // Shader source strings
+  // Intended to minimize the number of files required to use WebGLGears.
+  // The source code files are located elsewhere in the project(/asset/shader)
   progSrc.flat.vert = "uniform mat4 u_tf;\r\nuniform mat4 u_view;\r\nuniform mat4 u_mv;\r\nuniform mat3 u_nm;\r\n\r\nuniform vec3 u_lightDir_us;\r\nuniform vec3 u_ambient;\r\nuniform vec3 u_diffuse;\r\nuniform vec3 u_ambientIntensity;\r\n\r\nattribute vec3 a_pos;\r\nattribute vec3 a_normal;\r\n\r\nvarying vec3 v_fragColor;\r\n\r\n\r\nvoid main () {\r\n  vec4 pos_ms = vec4(a_pos, 1.0);\r\n  vec3 pos_cs = (u_mv * pos_ms).xyz;\r\n  vec3 normal_cs = (u_mv * vec4(a_normal, 1.0)).xyz;\r\n\r\n  float theta = max(dot(-u_lightDir_us, normalize((pos_cs - normal_cs).xyz)), 0.0);\r\n\r\n  v_fragColor = u_ambientIntensity * u_ambient + u_diffuse * theta;\r\n  gl_Position = u_tf * pos_ms;\r\n}\r\n";
   progSrc.flat.frag = "precision mediump float;\r\n\r\nvarying vec3 v_fragColor;\r\n\r\n\r\nvoid main () {\r\n  gl_FragColor = vec4(v_fragColor, 1.0);\r\n}\r\n";
   progSrc.smooth.vert = "uniform mat4 u_tf;\r\nuniform mat4 u_view;\r\nuniform mat4 u_mv;\r\nuniform mat3 u_nm;\r\n\r\nattribute vec3 a_pos;\r\nattribute vec3 a_normal;\r\n\r\nvarying vec3 v_normal_cs;\r\nvarying vec3 v_pos_cs;\r\n\r\n\r\nvoid main () {\r\n  vec4 pos_ms = vec4(a_pos, 1.0);\r\n\r\n  v_pos_cs = (u_mv * pos_ms).xyz;\r\n  v_normal_cs = (u_mv * vec4(a_normal, 1.0)).xyz;\r\n  gl_Position = u_tf * pos_ms;\r\n}\r\n";
@@ -491,54 +540,76 @@ var WebGLGears = (function () {
 
   return class WebGLGears {
     constructor () {
+      // View rotation in degrees
       var __view_rotx = 20.0;
       var __view_roty = 30.0;
       var __view_rotz = 0.0;
-      var __angle = 0.0;
+      var __angle = 0.0; // Rotation angle of the gears in degrees
       var __animate = true;
       var __frames = 0, __tRot0 = null, __tRate0 = null;
 
       var __init, __gear, __draw_gears, __draw_frame, __draw;
+      var __pumpGLErrors, __appendGLErrors;
       var __updateViewMatrix;
       var __gl = null, __w = null;
       var __arrGears = [];
       var __prog = {};
       var __printCallback = defaultPrintCallback;
       var __verbose = false;
+      var __health = { // Render health
+        attached: false,
+        glErrorStack: [],
+        fps: 0
+      };
+      var __animationFrameID = null;
+      // Number of glError to stack
+      var __glErrorStackSize = 20;
 
       var __mat = {
-        view: mat4.create(),
-        projection: mat4.create()
+        view: mat4.create(), // View transformation matrix
+        projection: mat4.create() // Projection transformation matrix
       };
       var __light = {
         pos: {
-          ws: vec4.fromValues(5.0, 5.0, 10.0, 1.0),
-          us: vec3.create()
+          // Light direction in camera space
+          // Although the name is 'ws'(world space), this position value is not
+          // transformed to camera space with ModelView matrix. This is
+          // intentional since it's a bug from 'glxgears'. The bug has been fixed
+          // in later versions of 'gears' programs, but here the bug is ported
+          // along to preserve the oringinal look of 'glxgears'.
+          ws: vec4.fromValues(5.0, 5.0, 10.0, 0.0),
+          us: vec3.create() // Light direction in unit vector
         }
       };
       var __tmp = {
+        // Inverted model transformation matrix
         modelInv: mat4.create(),
         view: {
+          // Rotation matrices
           rotate: {
             x: mat4.create(),
             y: mat4.create(),
             z: mat4.create()
           },
+          // Translation matrix
           translate: mat4.create()
         }
       };
+      // Viewport
+      // The dimensions are passed via reshape() method.
       var __viewport = {
         w: 0,
         h: 0
       };
+      // Eye position
       var __eyePos = vec3.fromValues(0.0, 0.0, -40.0);
 
-      mat4.identity(__mat.projection);
-
+      // Initialise GL client
       __init = function () {
         let m;
+        let errStack;
 
-        // Reset state members
+        // Reset members.
         __frames = 0;
         __tRate0 = __tRot0 = null;
         __prog = {};
@@ -582,11 +653,13 @@ var WebGLGears = (function () {
           ]
         });
 
+        // Default uniform values.
         __gl.useProgram(__prog.flat.prog);
         __gl.uniform3fv(__prog.flat.unif['u_ambientIntensity'], [0.2, 0.2, 0.2]);
         __gl.useProgram(__prog.smooth.prog);
         __gl.uniform3fv(__prog.smooth.unif['u_ambientIntensity'], [0.2, 0.2, 0.2]);
 
+        // Generate gear models.
         m = __gear(1.0, 4.0, 1.0, 20, 0.7);
         m.material = [ 0.8, 0.1, 0.0 ];
         __arrGears.push(m);
@@ -599,21 +672,32 @@ var WebGLGears = (function () {
         m.material = [ 0.2, 0.2, 1.0 ];
         __arrGears.push(m);
 
+        errStack = __pumpGLErrors();
+        if (errStack.length) {
+          let e = new Error("GLError occurred during initialisation.");
+
+          e.glErrorStack = errStack;
+          throw e;
+        }
+
+        // Assign temporary vectors and matrices for object rendering.
         for (m of __arrGears) {
           m.vec = {
-            translate: vec3.create(),
-            lightPos_cs: vec3.create()
+            translate: vec3.create() // Final translation vector
           };
           m.mat = {
-            rotate:  mat4.create(),
-            translate:  mat4.create(),
+            rotate: mat4.create(),
+            translate: mat4.create(),
             model: mat4.create(),
-            mv: mat4.create(),
+            mv: mat4.create(), // ModelView transformation matrix
+            // Model transformation matrix for normal vector
             nm: mat3.create(),
+            // Clip transformation matrix
             tf: mat4.create()
           };
         }
       };
+
       // Upload a gear wheel model.
       // A wheel consists of two render parts: the flat and smooth shading part
       // which need be rendered using two different programs.
@@ -784,6 +868,8 @@ var WebGLGears = (function () {
 
         return ret;
       };
+
+      // Draw gears in the scene
       __draw_gears = function () {
         let g;
 
@@ -823,6 +909,7 @@ var WebGLGears = (function () {
         __gl.enableVertexAttribArray(0);
         __gl.enableVertexAttribArray(1);
 
+        // Flat shade model
         __gl.useProgram(__prog.flat.prog);
         __gl.uniform3fv(__prog.flat.unif['u_lightDir_us'], __light.pos.us);
         for (g of __arrGears) {
@@ -841,6 +928,7 @@ var WebGLGears = (function () {
           __gl.drawElements(__gl.TRIANGLES, g.flat.arr.index.length, __gl.UNSIGNED_SHORT, 0);
         }
 
+        // Smooth shade model
         __gl.useProgram(__prog.smooth.prog);
         __gl.uniform3fv(__prog.smooth.unif['u_lightDir_us'], __light.pos.us);
         for (g of __arrGears) {
@@ -865,8 +953,11 @@ var WebGLGears = (function () {
         __gl.disable(__gl.DEPTH_TEST);
         __gl.disableVertexAttribArray(1);
       };
+
+      // Draw the scene
       __draw_frame = function () {
         let dt;
+        let errStack;
         const t = performance.now() / 1000.0;
 
         if (__tRot0 === null) {
@@ -888,37 +979,51 @@ var WebGLGears = (function () {
         __draw_gears();
         __gl.flush();
 
-        __frames += 1;
-
-        if (__tRate0 === null) {
-          __tRate0 = t;
+        errStack = __pumpGLErrors();
+        if (errStack.length) {
+          __appendGLErrors(errStack);
         }
-        if (t - __tRate0 >= 5.0) {
-          if (__printCallback && __verbose) {
+        else {
+          __frames += 1;
+
+          if (__tRate0 === null) {
+            __tRate0 = t;
+          }
+          if (t - __tRate0 >= 5.0) {
             const seconds = t - __tRate0;
             const fps = __frames / seconds;
-            let msg = [
-              "WebGL Gears: ",
-              __frames,
-              " frames in ",
-              seconds.toFixed(1),
-              " seconds = ",
-              fps.toFixed(3),
-              " FPS"
-            ];
 
-            __printCallback(msg.join(''));
+            __health.fps = fps;
+            if (__printCallback && __verbose) {
+              let msg = [
+                "WebGL Gears: ",
+                __frames,
+                " frames in ",
+                seconds.toFixed(1),
+                " seconds = ",
+                fps.toFixed(3),
+                " FPS"
+              ];
+
+              __printCallback(msg.join(''));
+            }
+            __tRate0 = t;
+            __frames = 0;
           }
-          __tRate0 = t;
-          __frames = 0;
         }
       };
+
+      // Draw callback
       __draw = function () {
         if (__gl && __w) {
           __draw_frame();
-          __w.requestAnimationFrame(__draw);
+          __animationFrameID = __w.requestAnimationFrame(__draw);
         }
       };
+
+      // Update view matrix
+      // Called when there's change to vectors related to view transformation
+      // matrix.
       __updateViewMatrix = function () {
         mat4.fromRotation(__tmp.view.rotate.x, __view_rotx * Math.PI / 180, [1.0, 0.0, 0.0]);
         mat4.fromRotation(__tmp.view.rotate.y, __view_roty * Math.PI / 180, [0.0, 1.0, 0.0]);
@@ -929,24 +1034,71 @@ var WebGLGears = (function () {
         mat4.mul(__mat.view, __mat.view, __tmp.view.rotate.z);
       };
 
+      // Returns multiple GL errors in an array
+      __pumpGLErrors = function () {
+        let err, ret = [];
+
+        while(true) {
+          err = __gl.getError();
+          if (err === __gl.NO_ERROR) {
+            break;
+          }
+          ret.push(err);
+        }
+
+        return ret;
+      };
+
+      // Append an array of GL errors to `__health.glErrorStack`
+      __appendGLErrors = function (s) {
+        const toPop = (__health.glErrorStack.length + s.length) - __glErrorStackSize;
+
+        if (toPop > 0) {
+          __health.glErrorStack.splice(__health.glErrorStack.length - 1, toPop);
+        }
+        __health.glErrorStack = __health.glErrorStack.concat(s);
+      };
+
       Object.defineProperties(this, {
+        // Attach WebGL context and Window object to the instance
+        // The method initialises GL side states and initiates the render loop.
+        // The global Window object will be used if `w` argument is not passed.
         attach: {
-          value: function (w, gl) {
+          value: function (gl, w) {
             this.detach();
             __gl = gl;
-            __w = w;
+            __w = w || window;
 
-            __init();
-            __w.requestAnimationFrame(__draw);
+            try {
+              __init();
+              __animationFrameID = __w.requestAnimationFrame(__draw);
+            }
+            catch (e) {
+                __gl = null;
+                __w = null;
+                __animationFrameID = null;
+                throw e;
+            }
+            __health.attached = true;
 
             return this;
           },
           configurable: true
         },
+
+        // Detach from WebGL context and Window object
+        // The method will stop the render loop and free all the GL resources
+        // it has allocated. `health()` members will be also reset.
+        // Once the instance is detached, it can be attached to any WebGL context
+        // and Window object.
         detach: {
           value: function () {
             let g;
 
+            if (__animationFrameID) {
+              __w.cancelAnimationFrame(__animationFrameID);
+              __animationFrameID = null;
+            }
             while (__arrGears.length > 0) {
               g = __arrGears.pop();
               freeBuffers(__gl, g.flat.buf);
@@ -962,11 +1114,17 @@ var WebGLGears = (function () {
 
             __gl = null;
             __w = null;
+            __health.attached = false;
+            __health.glErrorStack = [];
+            __health.fps = 0;
 
             return this;
           },
           configurable: true
         },
+
+        // Set up render dimensions
+        // Updates viewport, projection transformation matrix.
         reshape: {
           value: function (width, height) {
             const h = height / width;
@@ -979,6 +1137,8 @@ var WebGLGears = (function () {
           },
           configurable: true
         },
+
+        // X-axis rotation in degrees
         view_rotx: {
           get: function () {
             return __view_rotx;
@@ -990,6 +1150,8 @@ var WebGLGears = (function () {
           },
           configurable: true
         },
+
+        // Y-axis rotation in degrees
         view_roty: {
           get: function () {
             return __view_roty;
@@ -1001,6 +1163,8 @@ var WebGLGears = (function () {
           },
           configurable: true
         },
+
+        // Z-axis rotation in degrees
         view_rotz: {
           get: function () {
             return __view_rotz;
@@ -1012,6 +1176,10 @@ var WebGLGears = (function () {
           },
           configurable: true
         },
+
+        // Animate flag
+        // Setting this false will stop the rotation of the gears, not
+        // the render loop. Changes to view rotations will still be in effect.
         animate: {
           get: function () {
             return __animate;
@@ -1022,6 +1190,10 @@ var WebGLGears = (function () {
           },
           configurable: true
         },
+
+        // Verbosity flag
+        // Setting this false will result in blocking all the print callbacks
+        // except for errors.
         verbose: {
           get: function () {
             return __verbose;
@@ -1032,12 +1204,24 @@ var WebGLGears = (function () {
           },
           configurable: true
         },
+
+        // Print callback function
+        // If set, the passed callback function will be called instead of
+        // the default print callback, which prints the messages on `console`
+        // object. Setting this falsey value will revert the callback function
+        // to the default one. The callback function will be called with
+        // following arguments respectively:
+        //   - `head`: Headline of the log.
+        //     If the log is one liner, this is the message.
+        //   - `body`: Body of the log.
+        //     If the log is one liner, the value is null.
+        //   - `e`: An error object thrown internally. Optional.
         printCallback: {
           get: function () {
             return __printCallback;
           },
           set: function (cb) {
-            if (cb === null) {
+            if (!cb) {
               __printCallback = defaultPrintCallback;
             }
             else {
@@ -1048,6 +1232,8 @@ var WebGLGears = (function () {
           },
           configurable: true
         },
+
+        // Prints OpenGL renderer info (`glxgears -info` command)
         info: {
           value: function () {
             if (__gl) {
@@ -1063,16 +1249,46 @@ var WebGLGears = (function () {
             return this;
           },
           configurable: true
+        },
+
+        // Returns the health object
+        // The structure: {
+        //   attached: Boolean value indicates whether the instance is attached
+        //   glErrorStack: An array of GL errors generated during rendering
+        //   fps: Frames per second value calculated every 5 seconds
+        // }
+        health: {
+          value: function () {
+            return {
+              attached: __health.attached,
+              glErrorStack: __health.glErrorStack.slice(),
+              fps: __health.fps
+            };
+          },
+          configurable: true
         }
       });
 
+      // Initialse the view transformation matrix with default view rotation,
+      // eye position.
       __updateViewMatrix();
+
+      // Load identity matrix for the projection matrix for now.
+      // Will be updated on reshape() call.
+      mat4.identity(__mat.projection);
     }
 
+    // Put __VertexBuilder on public
     static get VertexBuilder () {
       return __VertexBuilder;
     }
 
+    // Returns an object that contains the arguments to
+    // the `HTMLCanvasElement.getContext()` method for optimal context creation.
+    // Structure: {
+    //   type: `contextType` argument
+    //   attr: `contextAttributes` argument
+    // }
     static optimalContextParams () {
       return {
         type: 'webgl',
