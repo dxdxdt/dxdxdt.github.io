@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>X1: Multipass Lighting</title>
+  <script type="application/javascript" src="mod/gl-matrix.js"></script>
+  <script type="application/javascript" src="mod/tutils.js"></script>
+
+  <script type="application/javascript">
+  (function () {
+    "use strict";
+    var docPtr = {};
+    var model = {};
+    var scene = {
+      obj: {
+        arr: [],
+        map: {
+          luminous: new Map(),
+          lighted: new Map()
+        }
+      },
+      cam: new Tut.Camera(),
+      globalLight: {
+        ambient: {
+          color: [0.05, 0.05, 0.05]
+        },
+        directional: {
+          arr: [],
+          active: new Set()
+        }
+      }
+    };
+    var addObject, rmObject, syncObject, syncCamera;
+    var onObjChange, onObjFocusOut, onObjDelete, onCamFocusOut;
+    var doneObjChange;
+    var storeJSON;
+    var mapObjTr = new Map();
+    var mapTrObj = new Map();
+    var jsonWindow = null;
+    var uriQuery = Tut.parseURIQuery(location.search.substr(1));
+
+    scene.toObject = function () {
+      let ret = {
+        cam: scene.cam.toObject(),
+        obj: []
+      };
+      let e;
+
+      for (e of scene.obj.arr) {
+        ret.obj.push(e.toObject());
+      }
+
+      return ret;
+    };
+    scene.fromObject = function (o) {
+      let e, ny;
+
+      scene.reset();
+      scene.cam.fromObject(o.cam);
+      for (e of o.obj) {
+        ny = new Tut.Object();
+        addObject(ny.fromObject(e));
+      }
+      doneObjChange();
+
+      return scene;
+    };
+    scene.reset = function () {
+      scene.cam.reset();
+      while (scene.obj.arr.length > 0) {
+        rmObject(scene.obj.arr[scene.obj.arr.length - 1]);
+      }
+      doneObjChange();
+
+      return scene;
+    };
+
+    onObjChange = function (evt) {
+      let tr = evt.target.parentNode.parentNode;
+      let o = mapTrObj.get(tr);
+
+      syncObject(o, tr, true);
+      doneObjChange();
+      storeJSON();
+    };
+    onObjFocusOut = function (evt) {
+      let tr = evt.target.parentNode.parentNode;
+      let o = mapTrObj.get(tr);
+
+      syncObject(o, tr, true);
+      syncObject(o, tr, false);
+      doneObjChange();
+      storeJSON();
+    };
+    onObjDelete = function (evt) {
+      let o = mapTrObj.get(evt.target.parentNode.parentNode);
+      rmObject(o);
+      doneObjChange();
+    };
+    onCamFocusOut = function () {
+      syncCamera(true);
+      syncCamera(false);
+      storeJSON();
+    };
+    doneObjChange = function () {
+      let obj, mdl, map, arr;
+
+      scene.obj.map.luminous.clear();
+      scene.obj.map.lighted.clear();
+      for (obj of scene.obj.arr) {
+        mdl = obj.model;
+        if (mdl && (!obj.hidden)) {
+          if (obj.luminous) {
+            map = scene.obj.map.luminous;
+          }
+          else {
+            map = scene.obj.map.lighted;
+          }
+          arr = map.get(mdl);
+          if (!arr) {
+            arr = [];
+            map.set(mdl, arr);
+          }
+          arr.push(obj);
+        }
+      }
+    };
+
+    storeJSON = function () {
+      localStorage.setItem('scene', JSON.stringify(scene.toObject()));
+    };
+
+    addObject = function (o) {
+      let e;
+      let tr, td, i;
+
+      for (e of scene.obj.arr) {
+        if (e === o) {
+          return;
+        }
+      }
+
+      tr = Tut.mkElement('tr')
+        .attr('class', 'objectRow')
+        .build();
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('input')
+        .attr('type', 'checkbox')
+        .attr('class', 'objectHidden')
+        .evt('change', onObjChange, false);
+      td.appendChild(i.build());
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('select')
+        .attr('class', 'objectModel')
+        .evt('input', onObjChange, false)
+        .build();
+      for (e in model) {
+        i.appendChild(Tut.mkElement('option')
+          .attr('value', e)
+          .text(e)
+          .build());
+      }
+      td.appendChild(i);
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('input')
+        .attr('type', 'text')
+        .attr('class', 'objectPosition')
+        .attr('placeholder', "x, y, z")
+        .attr('size', '20')
+        .evt('focusout', onObjFocusOut, false)
+        .build();
+      td.appendChild(i);
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('input')
+        .attr('type', 'text')
+        .attr('class', 'objectScale')
+        .attr('placeholder', "x, y, z")
+        .attr('size', '20')
+        .evt('focusout', onObjFocusOut, false)
+        .build();
+      td.appendChild(i);
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('input')
+        .attr('type', 'text')
+        .attr('class', 'objectRotation')
+        .attr('placeholder', "x, y, z, w")
+        .attr('size', '16')
+        .evt('focusout', onObjFocusOut, false)
+        .build();
+      td.appendChild(i);
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('input')
+        .attr('type', 'checkbox')
+        .attr('class', 'objectLuminous')
+        .evt('change', onObjChange, false);
+      td.appendChild(i.build());
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('input')
+        .attr('type', 'text')
+        .attr('class', 'objectLightConstants')
+        .attr('placeholder', "Lc, Ll, Lq")
+        .attr('size', '20')
+        .evt('focusout', onObjFocusOut, false)
+        .build();
+      td.appendChild(i);
+
+      td = Tut.mkElement('td').build();
+      tr.appendChild(td);
+      i = Tut.mkElement('button')
+        .text("Delete")
+        .evt('click', onObjDelete, false)
+        .build();
+      td.appendChild(i);
+
+      scene.obj.arr.push(o);
+      mapObjTr.set(o, tr);
+      mapTrObj.set(tr, o);
+      syncObject(o, tr, false);
+
+      docPtr.tblObject.head.insertAdjacentElement('afterend', tr);
+      storeJSON();
+    };
+    rmObject = function (o) {
+      let tr = mapObjTr.get(o);
+      let idx;
+
+      if (tr) {
+        tr.remove();
+        mapTrObj.delete(tr);
+      }
+      idx = scene.obj.arr.indexOf(o);
+      if (idx >= 0) {
+        scene.obj.arr.splice(idx, 1);
+      }
+      mapObjTr.delete(o);
+      storeJSON();
+    };
+    syncObject = function (o, tr, dirIn) {
+      let td = {
+        hidden: tr.getElementsByClassName('objectHidden')[0],
+        model: tr.getElementsByClassName('objectModel')[0],
+        position: tr.getElementsByClassName('objectPosition')[0],
+        scale: tr.getElementsByClassName('objectScale')[0],
+        rotation: tr.getElementsByClassName('objectRotation')[0],
+        luminous: tr.getElementsByClassName('objectLuminous')[0],
+        lightConstants: tr.getElementsByClassName('objectLightConstants')[0]
+      };
+
+      if (dirIn) {
+        o.hidden = td.hidden.checked;
+        o.model = td.model.value;
+        o.translate = Tut.parseCoor(td.position.value, 3) || o.translate;
+        o.scale = Tut.parseCoor(td.scale.value, 3) || o.scale;
+        o.rotation = Tut.parseCoor(td.rotation.value, 4) || o.rotation;
+        o.luminous = td.luminous.checked;
+        o.lightConstants = Tut.parseCoor(td.lightConstants.value, 3) || o.lightConstants;
+      }
+      else {
+        let i, lst;
+
+        td.hidden.checked = o.hidden;
+        lst = td.model.getElementsByTagName('option');
+        for (i = 0; i < lst.length; i += 1) {
+          lst[i].selected = lst[i].value === o.model;
+        }
+        td.position.value = Tut.coorStr(o.translate, 2);
+        td.scale.value = Tut.coorStr(o.scale, 2);
+        td.rotation.value = Tut.coorStr(o.rotation, 2);
+        td.luminous.checked = o.luminous;
+        td.lightConstants.value = Tut.coorStr(o.lightConstants, 3);
+      }
+    };
+    syncCamera = function (dirIn) {
+      if (dirIn) {
+        let pos, facing;
+
+        pos = Tut.parseCoor(docPtr.txtCamPos.value, 3);
+        facing = Tut.parseCoor(docPtr.txtCamFacing.value, 2);
+        if (pos !== null && facing !== null) {
+          scene.cam.setPos(pos[0], pos[1], pos[2]);
+          scene.cam.setAngles(Math.deg2rad(facing[0]), Math.deg2rad(facing[1]));
+        }
+      }
+      else {
+        docPtr.txtCamPos.value = Tut.coorStr(scene.cam.position, 2);
+        docPtr.txtCamFacing.value = Tut.coorStr([Math.rad2deg(scene.cam.angle.h), Math.rad2deg(scene.cam.angle.v)], 1);
+      }
+    };
+
+    window.addEventListener('load', function () {
+      let r;
+      var jsonFile;
+
+      r = new Tut.R.Pack([
+        // Shader: G buffering pass
+        new Tut.R.Source('shader.pass.g_buf.vert', "assets/x1/pass.g_buf.vert", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('shader.pass.g_buf.frag', "assets/x1/pass.g_buf.frag", Tut.R.TYPE.TEXT),
+        // Shader: Luminous pass
+        new Tut.R.Source('shader.pass.lum.vert', "assets/x1/pass.lum.vert", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('shader.pass.lum.frag', "assets/x1/pass.lum.frag", Tut.R.TYPE.TEXT),
+        // Shader: Point light pass
+        new Tut.R.Source('shader.pass.light_pt.vert', "assets/x1/pass.light_pt.vert", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('shader.pass.light_pt.frag', "assets/x1/pass.light_pt.frag", Tut.R.TYPE.TEXT),
+        // Shader: Bloom pass
+        new Tut.R.Source('shader.pass.bloom.vert', "assets/x1/pass.bloom.vert", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('shader.pass.bloom.frag', "assets/x1/pass.bloom.frag", Tut.R.TYPE.TEXT),
+        // Shader: G buffer final pass
+        new Tut.R.Source('shader.pass.g_fin.vert', "assets/x1/pass.g_fin.vert", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('shader.pass.g_fin.frag', "assets/x1/pass.g_fin.frag", Tut.R.TYPE.TEXT),
+        // Shader: Quad
+        new Tut.R.Source('shader.quad.vert', "assets/x1/quad.vert", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('shader.quad.frag', "assets/x1/quad.frag", Tut.R.TYPE.TEXT),
+
+        // Models
+        new Tut.R.Source('model.teapot.obj', "assets/obj/teapot.obj", Tut.R.TYPE.TEXT),
+
+        new Tut.R.Source('model.suzanne.obj', "assets/models/suzanne/suzanne.obj", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('model.suzanne.surface', "assets/models/suzanne/suzanne.png", Tut.R.TYPE.IMAGE),
+
+        new Tut.R.Source('model.cylinder.obj', "assets/t13/cylinder.obj", Tut.R.TYPE.TEXT),
+        new Tut.R.Source('model.cylinder.surface', "assets/t13/diffuse.png", Tut.R.TYPE.IMAGE),
+        new Tut.R.Source('model.cylinder.normal', "assets/t13/normal.png", Tut.R.TYPE.IMAGE),
+        new Tut.R.Source('model.cylinder.specular', "assets/t13/specular.png", Tut.R.TYPE.IMAGE),
+
+        new Tut.R.Source('model.example.obj', "assets/obj/example.obj", Tut.R.TYPE.TEXT)
+      ]);
+      r.onResult = function (r) {
+        if (!r.result) {
+          // Prevent fireGL() call.
+          this.onDone = null;
+        }
+      };
+      r.onDone = function () {
+        fireGL(this.bundle());
+      };
+      r.fetch();
+
+      docPtr.surface = document.getElementById("surface");
+      docPtr.txtCamPos = document.getElementById("txtCamPos");
+      docPtr.txtCamFacing = document.getElementById("txtCamFacing");
+      docPtr.tblObject = {};
+      docPtr.tblObject.tbl = document.getElementById('tblObject')
+      docPtr.tblObject.head = docPtr.tblObject.tbl.getElementsByClassName('tblObjectHead')[0];
+      docPtr.frmRenderTarget = document.getElementById('frmRenderTarget');
+
+      document.getElementById('btnAddObject').addEventListener('click', function () {
+        let o = new Tut.Object();
+
+        o.model = 'teapot';
+        addObject(o);
+        doneObjChange();
+      }, false);
+      document.getElementById('btnReset').addEventListener('click', function () {
+        if (confirm("Are you sure?")) {
+          scene.reset();
+        }
+      }, false);
+      document.getElementById('btnSceneData').addEventListener('click', function () {
+        let pre;
+        let str = JSON.stringify(scene.toObject(), null, 2);
+
+        if (jsonWindow && (!jsonWindow.closed)) {
+          pre = jsonWindow.document.getElementById('json');
+          Tut.setTextNode(pre, str, jsonWindow.document);
+        }
+        else {
+          jsonWindow = window.open("about:blank", "SceneData");
+          pre = Tut.mkElement('pre', jsonWindow.document)
+            .text(str)
+            .attr('id', 'json')
+            .build();
+          jsonWindow.document.body.appendChild(pre);
+          jsonWindow.document.title = "X1: Multipass Lighting - Scene Data";
+        }
+        jsonWindow.focus();
+      }, false);
+      document.getElementById('btnSceneDataParam').addEventListener('click', function () {
+        let pre;
+        let str = btoa(JSON.stringify(scene.toObject()));
+
+        if (str.length > 2000 && (!confirm("The result string exceeds 2000 characters, which is bad to paste in a url. Continue?"))) {
+          return;
+        }
+
+        if (jsonWindow && (!jsonWindow.closed)) {
+          pre = jsonWindow.document.getElementById('json');
+          Tut.setTextNode(pre, str, jsonWindow.document);
+        }
+        else {
+          jsonWindow = window.open("about:blank", "SceneDataParam");
+          pre = Tut.mkElement('pre', jsonWindow.document)
+            .text(str)
+            .attr('id', 'json')
+            .build();
+          jsonWindow.document.body.appendChild(pre);
+          jsonWindow.document.title = "(" + str.length + ") X1: Multipass Lighting - Scene Data as Param";
+        }
+        jsonWindow.focus();
+      }, false);
+      document.getElementById('txtCamPos').addEventListener('focusout', onCamFocusOut, false);
+      document.getElementById('txtCamFacing').addEventListener('focusout', onCamFocusOut, false);
+    });
+
+    function fireGL (rp) {
+      var watch = new Tut.PerfStopwatch();
+      var gl = docPtr.surface.getContext("webgl");
+      var ext;
+      var gr = {};
+      var inputOpt = {
+        mouse: {
+          factor: Math.deg2rad(0.05)
+        },
+        kbd: {
+          factor: 0.1
+        }
+      };
+      var inputRate = [0, 0]; // Forward, right.
+      var renderDim = {
+        w: surface.width,
+        h: surface.height
+      };
+
+      watch.push(false);
+
+      // Presistent scene properties
+      scene.cam.onupdate = syncCamera.bind(scene.cam, false);
+      scene.cam.aspectRatio = renderDim.w / renderDim.h;
+      scene.cam.near = 0.1;
+      scene.cam.far = 100.0;
+
+      // Set up events.
+      (() => {
+        var pointerTracker = document.getElementById("pointerTracker");
+        var clickListener = function () {
+          surface.requestPointerLock();
+        };
+        var kdListener = function (evt) {
+          switch (evt.key) {
+          case 'w': inputRate[0] = inputOpt.kbd.factor; break;
+          case 's': inputRate[0] = -inputOpt.kbd.factor; break;
+          case 'd': inputRate[1] = inputOpt.kbd.factor; break;
+          case 'a': inputRate[1] = -inputOpt.kbd.factor; break;
+          }
+        };
+        var kuListener = function (evt) {
+          switch (evt.key) {
+          case 'w': inputRate[0] = 0; break;
+          case 's': inputRate[0] = 0; break;
+          case 'd': inputRate[1] = 0; break;
+          case 'a': inputRate[1] = 0; break;
+          }
+        };
+        var mmListener = (evt) => {
+          // Update camera status.
+          scene.cam.addAngles(
+            inputOpt.mouse.factor * evt.movementX * -1,
+            inputOpt.mouse.factor * evt.movementY * -1);
+        };
+
+        surface.addEventListener("click", clickListener, false);
+        document.addEventListener("pointerlockchange", () => {
+          if (document.pointerLockElement === surface) {
+            surface.removeEventListener("click", clickListener);
+            surface.addEventListener("mousemove", mmListener, false);
+            document.addEventListener("keydown", kdListener, false);
+            document.addEventListener("keyup", kuListener, false);
+          }
+          else {
+            surface.addEventListener("click", clickListener, false);
+            surface.removeEventListener("mousemove", mmListener);
+            document.removeEventListener("keydown", kdListener);
+            document.removeEventListener("keyup", kuListener);
+            Tut.setTextNode(pointerTracker);
+            storeJSON();
+          }
+        }, false);
+      })();
+
+      watch.push(true);
+
+      (function () {
+        var frameCounter = document.getElementById("frameCounter");
+        var framePerf = new Tut.FrameCounter();
+        var frameWatch = new Tut.PerfStopwatch();
+        var matTF, matModelInv, matNM, matModel;
+        var obj;
+        var setNPOT, setPHT, assertSaneDSR, assertCompleteFB;
+        var mapModelObj = {
+          luminous: new Map(),
+          lighted: new Map()
+        };
+        let ext;
+
+        setNPOT = function () {
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        };
+        setPHT = function () {
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        };
+        assertSaneDSR = function () { // Sane Depth Stencil Renderbuffer
+          let bits = gl.getRenderbufferParameter(gl.RENDERBUFFER, gl.RENDERBUFFER_DEPTH_SIZE);
+          Tut.assert(bits >= 24, "DEPTH_STENCIL's depth size is less than 24. Returned: "  + bits);
+        };
+        assertCompleteFB = function (name) {
+          let r = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+          Tut.assert(r === gl.FRAMEBUFFER_COMPLETE, (name ? "Framebuffer '" + name + "'" : "Framebuffer") + " incomplete.");
+        };
+
+        watch.push(false);
+
+        matTF = mat4.create();
+        matModelInv = mat4.create();
+        matNM = mat3.create();
+
+        // Prep extensions.
+        gr.ext = {
+          'OES_texture_float': gl.getExtension('OES_texture_float'),
+          'OES_texture_float_linear': gl.getExtension('OES_texture_float_linear'),
+          'WEBGL_draw_buffers': gl.getExtension('WEBGL_draw_buffers')
+        };
+        Tut.assert(gr.ext['OES_texture_float'], "'OES_texture_float' extension required.");
+        Tut.assert(gr.ext['OES_texture_float_linear'], "'OES_texture_float_linear' extension required.");
+        Tut.assert(gr.ext['WEBGL_draw_buffers'], "'WEBGL_draw_buffers' extension required.");
+        Tut.assert(gr.ext['WEBGL_draw_buffers'].MAX_COLOR_ATTACHMENTS_WEBGL >= 4, "'WEBGL_draw_buffers' required to be 4 or greater.");
+        Tut.assert(gr.ext['WEBGL_draw_buffers'].MAX_DRAW_BUFFERS_WEBGL >= 4, "'MAX_DRAW_BUFFERS_WEBGL' required to be 4 or greater.");
+
+        // Setup shaders.
+        gr.prog = {
+          pass: {
+            g_buf: Tut.setupShader(gl, {
+              name: 'pass.g_buf',
+              vert: rp.shader.pass.g_buf.vert,
+              frag: rp.shader.pass.g_buf.frag,
+              verbose: true,
+              attrMap: {
+                a_pos_ms: 0,
+                a_normal_ms: 1,
+                a_uv: 2 },
+              unif: [
+                'u_model',
+                'u_nm',
+                'u_tf',
+                'u_ts.surface',
+                'u_ts.specular',
+                'u_ambientFactor' ]
+            }),
+            light_pt: Tut.setupShader(gl, {
+              name: 'pass.light_pt',
+              vert: rp.shader.pass.light_pt.vert,
+              frag: rp.shader.pass.light_pt.frag,
+              verbose: true,
+              attrMap: { a_pos: 0 },
+              unif: [
+                'u_tex.pos',
+                'u_tex.normal',
+                'u_tex.uv',
+                'u_tex.spec',
+                'u_light.pos_ws',
+                'u_light.color',
+                'u_light.shininess',
+                'u_light.lc',
+                'u_light.ll',
+                'u_light.lq',
+                'u_viewPos' ]
+            }),
+            lum: Tut.setupShader(gl, {
+              name: 'pass.lum',
+              vert: rp.shader.pass.lum.vert,
+              frag: rp.shader.pass.lum.frag,
+              verbose: true,
+              attrMap: {
+                a_pos_ms: 0,
+                a_uv: 1
+              },
+              unif: ['u_tf', 'u_tex', 'u_baseColor']
+            }),
+            bloom: Tut.setupShader(gl, {
+              name: 'pass.bloom',
+              vert: rp.shader.pass.bloom.vert,
+              frag: rp.shader.pass.bloom.frag,
+              verbose: true,
+              attrMap: { a_pos: 0 },
+              unif: [
+                'u_tex.bloom',
+                'u_propBlurStep.w',
+                'u_propBlurStep.h' ]
+            }),
+            g_fin: Tut.setupShader(gl, {
+              name: 'pass.g_fin',
+              vert: rp.shader.pass.g_fin.vert,
+              frag: rp.shader.pass.g_fin.frag,
+              verbose: true,
+              attrMap: { a_pos: 0 },
+              unif: [
+                'u_tex.lighted',
+                'u_tex.ambient',
+                'u_tex.bloom' ]
+            })
+          },
+          quad: Tut.setupShader(gl, {
+            name: 'quad',
+            vert: rp.shader.quad.vert,
+            frag: rp.shader.quad.frag,
+            verbose: true,
+            attrMap: {
+              a_pos: 0 },
+            unif: ['u_tex']
+          })
+        };
+
+        // Default/persistent uniform values
+        gl.useProgram(gr.prog.pass.g_buf.prog);
+        gl.uniform1i(gr.prog.pass.g_buf.unif['u_ts.surface'], 0);
+        gl.uniform1i(gr.prog.pass.g_buf.unif['u_ts.specular'], 1);
+        gl.uniform1f(gr.prog.pass.g_buf.unif['u_ambientFactor'], 0.05);
+
+        gl.useProgram(gr.prog.pass.light_pt.prog);
+        gl.uniform1i(gr.prog.pass.light_pt.unif['u_tex.pos'], 0);
+        gl.uniform1i(gr.prog.pass.light_pt.unif['u_tex.normal'], 1);
+        gl.uniform1i(gr.prog.pass.light_pt.unif['u_tex.uv'], 2);
+        gl.uniform1i(gr.prog.pass.light_pt.unif['u_tex.spec'], 3);
+        gl.uniform3f(gr.prog.pass.light_pt.unif['u_light.color'], 1, 1, 1);
+        gl.uniform1f(gr.prog.pass.light_pt.unif['u_light.shininess'], 32);
+
+        gl.useProgram(gr.prog.pass.lum.prog);
+        gl.uniform1i(gr.prog.pass.lum.unif['u_tex'], 0);
+        gl.uniform3f(gr.prog.pass.lum.unif['u_baseColor'], 1, 1, 1);
+
+        gl.useProgram(gr.prog.pass.bloom.prog);
+        gl.uniform1i(gr.prog.pass.bloom.unif['u_tex.bloom'], 0);
+        {
+          let i;
+          const arr = [0.227027, 0.2108108, 0.1945946, 0.1581081, 0.1216216, 0.0878378, 0.054054, 0.035135, 0.016216];
+          let loc;
+
+          for (i = 0; i < arr.length; i += 1) {
+            loc = gl.getUniformLocation(gr.prog.pass.bloom.prog, 'u_propWeight[' + i + ']');
+            gl.uniform1f(loc, arr[i]);
+          }
+        }
+
+        gl.useProgram(gr.prog.pass.g_fin.prog);
+        gl.uniform1i(gr.prog.pass.g_fin.unif['u_tex.lighted'], 0);
+        gl.uniform1i(gr.prog.pass.g_fin.unif['u_tex.ambient'], 1);
+        gl.uniform1i(gr.prog.pass.g_fin.unif['u_tex.bloom'], 2);
+
+        gl.useProgram(gr.prog.quad.prog);
+        gl.uniform1i(gr.prog.quad.unif['u_tex'], 0);
+
+        gl.useProgram(null);
+
+        // Upload models.
+        gr.model = {};
+
+        model.teapot = Tut.OBJ.parse(rp.model.teapot.obj);
+        model.teapot.texture = {
+          surface: null // TODO
+        };
+        model.teapot.array.uvs = new Float32Array(model.teapot.indices.length / 3 * 2);
+        gr.model.teapot = Tut.uploadModel(gl, model.teapot);
+
+        model.suzanne = Tut.OBJ.parse(rp.model.suzanne.obj);
+        model.suzanne.texture = {
+          surface: rp.model.suzanne.surface
+        };
+        gr.model.suzanne = Tut.uploadModel(gl, model.suzanne);
+
+        model.example = Tut.OBJ.parse(rp.model.example.obj);
+        model.example.texture = {
+          surface: null // TODO
+        };
+        gr.model.example = Tut.uploadModel(gl, model.example);
+
+        model.cylinder = Tut.OBJ.parse(rp.model.cylinder.obj);
+        model.cylinder.texture = {
+          surface: rp.model.cylinder.surface,
+          normal: rp.model.cylinder.normal,
+          specular: rp.model.cylinder.specular
+        };
+        gr.model.cylinder = Tut.uploadModel(gl, model.cylinder);
+
+        gr.model.__quad = Tut.uploadModel(gl, {
+          array: {
+            vertices: new Float32Array([
+              -1.0, 1.0,
+              1.0, 1.0,
+              1.0, -1.0,
+              -1.0, -1.0])
+          },
+          indices: new Uint16Array([
+            3, 0, 2,
+            2, 0, 1])
+        });
+
+        gr.pht = { // Place Holder Textures
+          white: gl.createTexture(),
+          nscp: gl.createTexture(), // No Surface Checker Pattern
+          magenta: gl.createTexture()
+        };
+
+        gl.bindTexture(gl.TEXTURE_2D, gr.pht.white);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([
+          255, 255, 255, 255,
+          255, 255, 255, 255,
+          255, 255, 255, 255,
+          255, 255, 255, 255 ]));
+        setPHT();
+
+        gl.bindTexture(gl.TEXTURE_2D, gr.pht.nscp);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([
+          255, 255, 255, 255,
+          255, 0, 255, 255,
+          255, 255, 255, 255,
+          255, 0, 255, 255 ]));
+        setPHT();
+
+        gl.bindTexture(gl.TEXTURE_2D, gr.pht.magenta);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([
+          255, 0, 255, 255,
+          255, 0, 255, 255,
+          255, 0, 255, 255,
+          255, 0, 255, 255 ]));
+        setPHT();
+
+        // Prep render target textures.
+        gr.rt = {
+          pos: gl.createTexture(),
+          normal: gl.createTexture(),
+          final: gl.createTexture(),
+          color: {
+            uv: gl.createTexture(),
+            specular: gl.createTexture(),
+            ambient: gl.createTexture()
+          },
+          light: gl.createTexture(),
+          bloom: {
+            a: gl.createTexture(),
+            b: gl.createTexture()
+          }
+        };
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.pos);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.FLOAT, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.normal);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.FLOAT, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.final);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.uv);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.specular);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.ambient);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.light);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.a);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        setNPOT();
+        gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.b);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        setNPOT();
+
+        // Prep Framebuffers.
+        ext = gr.ext['WEBGL_draw_buffers'];
+        gr.fb = {
+          g_buf: gl.createFramebuffer(),
+          light: gl.createFramebuffer(),
+          lum: gl.createFramebuffer(),
+          bloom: {
+            a: gl.createFramebuffer(),
+            b: gl.createFramebuffer()
+          },
+          final: gl.createFramebuffer()
+        };
+        gr.rb = {
+          main: gl.createRenderbuffer()
+        };
+
+        gl.bindRenderbuffer(gl.RENDERBUFFER, gr.rb.main);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_STENCIL, renderDim.w, renderDim.h);
+        Tut.assert(gl.getError() === gl.NO_ERROR, "An error occurred generating DEPTH_STENCIL renderbuffer.");
+        assertSaneDSR();
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.g_buf);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT0_WEBGL, gl.TEXTURE_2D, gr.rt.pos, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT1_WEBGL, gl.TEXTURE_2D, gr.rt.normal, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT2_WEBGL, gl.TEXTURE_2D, gr.rt.color.uv, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT3_WEBGL, gl.TEXTURE_2D, gr.rt.color.specular, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT4_WEBGL, gl.TEXTURE_2D, gr.rt.color.ambient, 0);
+        ext.drawBuffersWEBGL([
+          ext.COLOR_ATTACHMENT0_WEBGL,
+          ext.COLOR_ATTACHMENT1_WEBGL,
+          ext.COLOR_ATTACHMENT2_WEBGL,
+          ext.COLOR_ATTACHMENT3_WEBGL,
+          ext.COLOR_ATTACHMENT4_WEBGL ]);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, gr.rb.main);
+        assertCompleteFB('g_buf');
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.light);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT0_WEBGL, gl.TEXTURE_2D, gr.rt.light, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT1_WEBGL, gl.TEXTURE_2D, gr.rt.bloom.b, 0);
+        ext.drawBuffersWEBGL([
+          ext.COLOR_ATTACHMENT0_WEBGL,
+          ext.COLOR_ATTACHMENT1_WEBGL ]);
+        assertCompleteFB('light');
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.lum);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT0_WEBGL, gl.TEXTURE_2D, gr.rt.light, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT1_WEBGL, gl.TEXTURE_2D, gr.rt.bloom.b, 0);
+        ext.drawBuffersWEBGL([
+          ext.COLOR_ATTACHMENT0_WEBGL,
+          ext.COLOR_ATTACHMENT1_WEBGL]);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, gr.rb.main);
+        assertCompleteFB('lum');
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.bloom.a);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT0_WEBGL, gl.TEXTURE_2D, gr.rt.bloom.a, 0);
+        ext.drawBuffersWEBGL([ext.COLOR_ATTACHMENT0_WEBGL]);
+        assertCompleteFB('bloom.a');
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.bloom.b);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT0_WEBGL, gl.TEXTURE_2D, gr.rt.bloom.b, 0);
+        ext.drawBuffersWEBGL([ext.COLOR_ATTACHMENT0_WEBGL]);
+        assertCompleteFB('bloom.b');
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.final);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, ext.COLOR_ATTACHMENT0_WEBGL, gl.TEXTURE_2D, gr.rt.final, 0);
+        ext.drawBuffersWEBGL([ext.COLOR_ATTACHMENT0_WEBGL]);
+        assertCompleteFB('final');
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        gl.enableVertexAttribArray(0);
+
+        watch.push(true);
+
+        try {
+          let str;
+          let loadDefault = () => str = localStorage.getItem('scene'); // Load scene data if present.
+
+          // Use param scene data if provided.
+          if (typeof uriQuery['sceneData'] !== 'undefined') {
+            try {
+              let tmp = atob(uriQuery['sceneData']);
+
+              if (confirm("Scene Data Param detected. Stored data will be lost. Continue?")) {
+                str = tmp;
+              }
+              else {
+                loadDefault();
+              }
+            }
+            catch (e) {
+              alert("Failed to parse Scene Data Param.");
+              loadDefault();
+            }
+          }
+          else {
+            loadDefault();
+          }
+
+          if (str) {
+            scene.fromObject(JSON.parse(str));
+          }
+        }
+        catch (e) {
+          console.error(e);
+          scene.reset();
+        }
+
+        watch.push(true);
+
+        var draw = function () {
+          let pair, glMdl, mdl;
+
+          frameWatch.reset().push();
+
+          // CPU intensive work before GL calls.
+
+          scene.cam // Reflect user input.
+            .move(inputRate[0], inputRate[1]) // XXX: Probably not a good idea on slow machines.
+            .calcMatrices(); // Calc view, projection matrix.
+
+          // GL calls.
+          gl.viewport(0, 0, renderDim.w, renderDim.h);
+
+          gl.enable(gl.DEPTH_TEST);
+          gl.enable(gl.CULL_FACE);
+          gl.enableVertexAttribArray(1);
+          gl.enableVertexAttribArray(2);
+          {
+            // G buffering pass
+            gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.g_buf);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            gl.useProgram(gr.prog.pass.g_buf.prog);
+            for (pair of scene.obj.map.lighted) {
+              glMdl = gr.model[pair[0]];
+              mdl = model[pair[0]];
+
+              gl.bindBuffer(gl.ARRAY_BUFFER, glMdl.buf.vertex);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 0, 0);
+              gl.bindBuffer(gl.ARRAY_BUFFER, glMdl.buf.normal);
+              gl.vertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 0, 0);
+              gl.bindBuffer(gl.ARRAY_BUFFER, glMdl.buf.uv);
+              gl.vertexAttribPointer(2, 2, gl.FLOAT, gl.FALSE, 0, 0);
+              gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, glMdl.buf.index);
+
+              gl.activeTexture(gl.TEXTURE0);
+              if (glMdl.tex.surface) {
+                gl.bindTexture(gl.TEXTURE_2D, glMdl.tex.surface);
+              }
+              else {
+                gl.bindTexture(gl.TEXTURE_2D, gr.pht.nscp);
+              }
+              gl.activeTexture(gl.TEXTURE1);
+              if (glMdl.tex.specular) {
+                gl.bindTexture(gl.TEXTURE_2D, glMdl.tex.specular);
+              }
+              else {
+                gl.bindTexture(gl.TEXTURE_2D, gr.pht.white);
+              }
+
+              for (obj of pair[1]) {
+                matModel = obj.updateMatrix().matrix;
+                mat4.amul(matTF, scene.cam.projection, scene.cam.view, matModel);
+                mat4.invert(matModelInv, matModel);
+                [matNM[0], matNM[1], matNM[2], matNM[3], matNM[4], matNM[5], matNM[6], matNM[7], matNM[8]] =
+                  [matModelInv[0], matModelInv[4], matModelInv[8], matModelInv[1], matModelInv[5], matModelInv[9], matModelInv[2], matModelInv[6], matModelInv[10]];
+
+                gl.uniformMatrix4fv(gr.prog.pass.g_buf.unif['u_model'], gl.FALSE, matModel);
+                gl.uniformMatrix3fv(gr.prog.pass.g_buf.unif['u_nm'], gl.FALSE, matNM);
+                gl.uniformMatrix4fv(gr.prog.pass.g_buf.unif['u_tf'], gl.FALSE, matTF);
+                gl.drawElements(gl.TRIANGLES, mdl.indices.length, gl.UNSIGNED_SHORT, 0);
+              }
+            }
+          }
+          gl.disableVertexAttribArray(1);
+          gl.disableVertexAttribArray(2);
+          gl.disable(gl.DEPTH_TEST);
+          gl.disable(gl.CULL_FACE);
+
+          gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.lum);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.ONE, gl.ONE);
+          gl.blendEquation(gl.FUNC_ADD);
+          {
+            // Lighting pass
+            let lc;
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.light);
+
+            gl.useProgram(gr.prog.pass.light_pt.prog);
+            gl.uniform3fv(gr.prog.pass.light_pt.unif['u_viewPos'], scene.cam.position);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, gr.model.__quad.buf.vertex);
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 0, 0);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gr.model.__quad.buf.index);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.pos);
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.normal);
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.uv);
+            gl.activeTexture(gl.TEXTURE3);
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.specular);
+
+            for (pair of scene.obj.map.luminous) {
+              for (obj of pair[1]) {
+                lc = obj.lightConstants;
+                gl.uniform3fv(gr.prog.pass.light_pt.unif['u_light.pos_ws'], obj.translate);
+                gl.uniform1f(gr.prog.pass.light_pt.unif['u_light.lc'], lc[0]);
+                gl.uniform1f(gr.prog.pass.light_pt.unif['u_light.ll'], lc[1]);
+                gl.uniform1f(gr.prog.pass.light_pt.unif['u_light.lq'], lc[2]);
+                gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+              }
+            }
+          }
+          gl.disable(gl.BLEND);
+
+          gl.enable(gl.DEPTH_TEST);
+          gl.enable(gl.CULL_FACE);
+          gl.enableVertexAttribArray(1);
+          {
+            // Luminous pass
+            gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.lum);
+
+            gl.useProgram(gr.prog.pass.lum.prog);
+            for (pair of scene.obj.map.luminous) {
+              glMdl = gr.model[pair[0]];
+              mdl = model[pair[0]];
+
+              gl.bindBuffer(gl.ARRAY_BUFFER, glMdl.buf.vertex);
+              gl.vertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 0, 0);
+              gl.bindBuffer(gl.ARRAY_BUFFER, glMdl.buf.uv);
+              gl.vertexAttribPointer(1, 2, gl.FLOAT, gl.FALSE, 0, 0);
+              gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, glMdl.buf.index);
+
+              gl.activeTexture(gl.TEXTURE0);
+              if (glMdl.tex.surface) {
+                gl.bindTexture(gl.TEXTURE_2D, glMdl.tex.surface);
+              }
+              else {
+                gl.bindTexture(gl.TEXTURE_2D, gr.pht.nscp);
+              }
+
+              for (obj of pair[1]) {
+                matModel = obj.updateMatrix().matrix;
+                mat4.amul(matTF, scene.cam.projection, scene.cam.view, matModel);
+
+                gl.uniformMatrix4fv(gr.prog.pass.lum.unif['u_tf'], gl.FALSE, matTF);
+                gl.drawElements(gl.TRIANGLES, mdl.indices.length, gl.UNSIGNED_SHORT, 0);
+              }
+            }
+          }
+          gl.disable(gl.DEPTH_TEST);
+          gl.disable(gl.CULL_FACE);
+          gl.disableVertexAttribArray(1);
+
+          {
+            // Bloom pass
+            gl.useProgram(gr.prog.pass.bloom.prog);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, gr.model.__quad.buf.vertex);
+            gl.vertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 0, 0);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gr.model.__quad.buf.index);
+
+            gl.activeTexture(gl.TEXTURE0);
+
+            // Horizontal blur
+            gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.bloom.a);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.uniform1f(gr.prog.pass.bloom.unif['u_propBlurStep.w'], 1 / renderDim.w);
+            gl.uniform1f(gr.prog.pass.bloom.unif['u_propBlurStep.h'], 0);
+
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.b);
+            gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+            // Vertical blur
+            gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.bloom.b);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.uniform1f(gr.prog.pass.bloom.unif['u_propBlurStep.w'], 0);
+            gl.uniform1f(gr.prog.pass.bloom.unif['u_propBlurStep.h'], 1 / renderDim.h);
+
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.a);
+            gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+          }
+
+          // Final pass
+          gl.bindFramebuffer(gl.FRAMEBUFFER, gr.fb.final);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+
+          gl.useProgram(gr.prog.pass.g_fin.prog);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, gr.model.__quad.buf.vertex);
+          gl.vertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 0, 0);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gr.model.__quad.buf.index);
+
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, gr.rt.light);
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.ambient);
+          gl.activeTexture(gl.TEXTURE2);
+          gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.b);
+
+          gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+          // Draw to framebuffer.
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+
+          gl.useProgram(gr.prog.quad.prog);
+          gl.bindBuffer(gl.ARRAY_BUFFER, gr.model.__quad.buf.vertex);
+          gl.vertexAttribPointer(0, 2, gl.FLOAT, gl.FALSE, 0, 0);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gr.model.__quad.buf.index);
+
+          gl.activeTexture(gl.TEXTURE0);
+          switch (docPtr.frmRenderTarget.texture.value) {
+          case 'pos':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.pos);
+            break;
+          case 'normal':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.normal);
+            break;
+          case 'color.uv':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.uv);
+            break;
+          case 'color.specular':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.specular);
+            break;
+          case 'color.luminous':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.luminous);
+            break;
+          case 'color.ambient':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.ambient);
+            break;
+          case 'light':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.light);
+            break;
+          case 'bloom.a':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.a);
+            break;
+          case 'bloom.b':
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.b);
+            break;
+          case 'final':
+          default:
+            gl.bindTexture(gl.TEXTURE_2D, gr.rt.final);
+          }
+
+          gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+          gl.flush();
+
+          frameWatch.push();
+          framePerf.push(frameWatch.ts[1] - frameWatch.ts[0]);
+          requestAnimationFrame(draw);
+        };
+
+        requestAnimationFrame(draw);
+
+        setInterval(function () {
+          var str;
+
+          if (framePerf.calc().cnt) {
+            str = framePerf.cnt +
+              " (sum: " + framePerf.sum.toFixed(4) +
+              ", mean: " + framePerf.mean.toFixed(4) +
+              ", min: " + framePerf.min.toFixed(4) +
+              ", max: " + framePerf.max.toFixed(4) +
+              ", stdev: " + framePerf.stdev.toFixed(4) + ")";
+          }
+          else {
+            str = "0";
+          }
+
+          Tut.setTextNode(frameCounter, str);
+        }, 1000);
+      })();
+    }})();
+  </script>
+  <link rel='stylesheet' type='text/css' href="assets/x1/conf.css" />
+</head>
+<body>
+  <p>
+    <div><span>Movement: </span><span id="pointerTracker"></span></div>
+  </p>
+  <p>
+    <canvas id="surface" width="800" height="600"></canvas>
+  </p>
+  <p>
+    <div id="frameCounter"></div>
+  </p>
+  <p>
+    <div>
+      <h2>Render Target</h2>
+      <form id='frmRenderTarget'>
+        <p>
+          <input type='radio' id='rdoFinal' name='texture' value='final' checked />
+          <label for='rdoFinal'>final</label>
+        </p>
+        <p>
+          <input type='radio' id='rdoPos' name='texture' value='pos' />
+          <label for='rdoPos'>pos</label>
+          <input type='radio' id='rdoNormal' name='texture' value='normal' />
+          <label for='rdoNormal'>normal</label>
+          <input type='radio' id='rdoColorUV' name='texture' value='color.uv' />
+          <label for='rdoColorUV'>color.uv</label>
+          <input type='radio' id='rdoColorSpecular' name='texture' value='color.specular' />
+          <label for='rdoColorSpecular'>color.specular</label>
+          <input type='radio' id='rdoColorLuminous' name='texture' value='color.luminous' />
+          <label for='rdoColorLuminous'>color.luminous</label>
+          <input type='radio' id='rdoColorAmbient' name='texture' value='color.ambient' />
+          <label for='rdoColorAmbient'>color.ambient</label>
+          <input type='radio' id='rdoLight' name='texture' value='light' />
+          <label for='rdoLight'>light</label>
+          <input type='radio' id='rdoBloomA' name='texture' value='bloom.a' />
+          <label for='rdoBloomA'>bloom.a</label>
+          <input type='radio' id='rdoBloomB' name='texture' value='bloom.b' />
+          <label for='rdoBloomB'>bloom.b</label>
+        </p>
+      </form>
+    </div>
+    <p>
+      <h2>Scene</h2>
+      <div>
+        <h3>Camera</h3>
+        <table>
+          <tr>
+            <th>Position</th>
+            <th>Facing</th>
+          </tr>
+          <tr>
+            <td><input type='text' size='20' id='txtCamPos' placeholder="x, y, z" /></td>
+            <td><input type='text' size='15' id='txtCamFacing' placeholder="x, y" /></td>
+          </tr>
+        </table>
+      </div>
+      <div>
+        <h3>Objects</h3>
+        <table id='tblObject'>
+          <tr>
+            <td colspan='8'>
+              <button id='btnAddObject'>Add</button>
+            </td>
+          </tr>
+          <tr class='tblObjectHead'>
+            <th>Hidden</th>
+            <th>Model</th>
+            <th>Position</th>
+            <th>Scale</th>
+            <th>Rotation</th>
+            <th>Luminous</th>
+            <th>Light Constants</th>
+            <th>Actions</th>
+          </tr>
+        </table>
+      </div>
+    </p>
+    <div>
+      <h2>General</h2>
+      <p>
+        <button type='reset' id='btnReset'>Reset Scene</button>
+        <button type='reset' id='btnSceneData'>Show Scene Data</button>
+        <button type='reset' id='btnSceneDataParam'>Show Scene Data as Param</button>
+      </p>
+    </div>
+  </p>
+</body>
+</html>

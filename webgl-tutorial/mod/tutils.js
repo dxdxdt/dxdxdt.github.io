@@ -1,4 +1,4 @@
-/* global vec2, vec3, vec4, mat2, mat2d, mat3, mat4 */
+/* global vec2, vec3, vec4, mat2, mat2d, mat3, mat4, quat */
 var Tut = (() => {
   "use strict";
   // Scope local decl ...
@@ -197,6 +197,7 @@ var Tut = (() => {
         var __vecAdd__ = vec3.create();
         var __vecDir__ = vec3.create();
         var __vecRight__ = vec3.create();
+        var __lookPoint__ = vec3.create();
 
         this.position = vec3.fromValues(0, 0, 5);
         this.angle = {
@@ -207,6 +208,22 @@ var Tut = (() => {
         this.direction = vec3.create();
         this.right = vec3.create();
         this.up = vec3.create();
+        this.projection = mat4.create();
+        this.view = mat4.create();
+        this.aspectRatio = 1;
+        this.near = 0.1;
+        this.far = 100.0;
+
+        this.reset = function () {
+          vec3.copy(this.position, [0, 0, 5]);
+          this.angle.h = Math.deg2rad(180);
+          this.angle.v = Math.deg2rad(0);
+          this.fov = 45;
+          this.calcVectors();
+          this.onupdate();
+
+          return this;
+        };
 
         this.correctAngles = function () {
           var wrapAngle = (x) => {
@@ -243,21 +260,36 @@ var Tut = (() => {
           this
             .correctAngles()
             .calcVectors();
+          this.onupdate();
 
           return this;
         };
         this.addAngles = function (v, h) {
+          if (v === 0 && h === 0) {
+            return this;
+          }
+
           this.angle.h += v;
           this.angle.v += h;
 
           this
             .correctAngles()
             .calcVectors();
+          this.onupdate();
 
+          return this;
+        };
+        this.setPos = function (x, y, z) {
+          [this.position[0], this.position[1], this.position[2]] = [x, y, z];
+          this.onupdate();
           return this;
         };
         this.move = function (direction, right) {
           var i;
+
+          if (direction === 0 && right === 0) {
+            return this;
+          }
 
           for (i = 0; i < 3; i += 1) {
             __vecDir__[i] = this.direction[i] * direction;
@@ -281,13 +313,188 @@ var Tut = (() => {
           this.right[2] = Math.cos(this.angle.h - Math.deg2rad(90));
           vec3.cross(this.up, this.right, this.direction);
 
-          this.onupdate();
-
           return this;
         };
         this.onupdate = function () {};
 
+        this.calcProjection = function () {
+          mat4.perspective(this.projection, this.fov, this.aspectRatio, this.near, this.far);
+          return this;
+        };
+        this.calcView = function () {
+          vec3.add(__lookPoint__, this.position, this.direction);
+          mat4.lookAt(this.view, this.position, __lookPoint__, this.up);
+          return this;
+        };
+        this.calcMatrices = function () {
+          this.calcProjection().calcView();
+          return this;
+        };
+
+        this.toObject = function (o) {
+          let ret = o || {};
+
+          ret.position = Array.from(this.position);
+          ret.angle = {h: this.angle.h, v: this.angle.v};
+          ret.fov = this.fov;
+
+          return ret;
+        };
+        this.fromObject = function (o) {
+          this.fov = o.fov;
+          this.setPos(o.position[0], o.position[1], o.position[2]);
+          this.setAngles(o.angle.h, o.angle.v);
+
+          return this;
+        };
+
         this.calcVectors();
+      }
+    },
+
+    Object: class {
+      constructor () {
+        var hidden = false;
+        var model = null;
+        var rotation = quat.create();
+        var translate = vec3.fromValues(0, 0, 0);
+        var scale = vec3.fromValues(1, 1, 1);
+        var mat = mat4.create();
+        var luminous = false;
+        var lightConstants = [1.0, 0.045, 0.075];
+
+        quat.identity(rotation);
+
+        Object.defineProperties(this, {
+          hidden: {
+            get: function () {
+              return hidden;
+            },
+            set: function (x) {
+              hidden = x;
+              return hidden;
+            },
+            configurable: true
+          },
+          model: {
+            get: function () {
+              return model;
+            },
+            set: function (x) {
+              model = x;
+              return model;
+            },
+            configurable: true
+          },
+          rotation: {
+            get: function () {
+              return rotation;
+            },
+            set: function (x) {
+              quat.copy(rotation, x);
+              return rotation;
+            },
+            configurable: true
+          },
+          setEulerDegrees: {
+            value: function (x, y, z) {
+              quat.fromEuler(rotation, x, y, z);
+              return this;
+            },
+            configurable: true
+          },
+          setEulerRadians: {
+            value: function (x, y, z) {
+              quat.fromEuler(rotation, Math.rad2deg(x), Math.rad2deg(y), Math.rad2deg(z));
+              return this;
+            },
+            configurable: true
+          },
+          translate: {
+            get: function () {
+              return translate;
+            },
+            set: function (x) {
+              vec3.copy(translate, x);
+            },
+            configurable: true
+          },
+          scale: {
+            get: function () {
+              return scale;
+            },
+            set: function (x) {
+              vec3.copy(scale, x);
+              return scale;
+            },
+            configurable: true
+          },
+          matrix: {
+            get: function () {
+              return mat;
+            },
+            configurable: true
+          },
+          luminous: {
+            get: function () {
+              return luminous;
+            },
+            set: function (x) {
+              luminous = x;
+              return luminous;
+            },
+            configurable: true
+          },
+          lightConstants: {
+            get: function () {
+              return lightConstants;
+            },
+            set: function (x) {
+              lightConstants = [x[0], x[1], x[2]];
+              return lightConstants;
+            },
+            configurable: true
+          },
+          updateMatrix: {
+            value: function () {
+              mat4.fromRotationTranslationScale(mat, rotation, translate, scale);
+              return this;
+            },
+            configurable: true
+          },
+          toObject: {
+            value: function (out) {
+              let ret = out || {};
+
+              ret.hidden = hidden;
+              ret.model = model;
+              ret.rotation = Array.from(rotation);
+              ret.translate = Array.from(translate);
+              ret.scale = Array.from(scale);
+              ret.luminous = luminous;
+              ret.lightConstants = Array.from(lightConstants);
+
+              return ret;
+            },
+            configurable: true
+          },
+          fromObject: {
+            value: function (x) {
+              this.hidden = x.hidden;
+              this.model = x.model;
+              this.rotation = x.rotation;
+              this.translate = x.translate;
+              this.scale = x.scale;
+              this.luminous = x.luminous;
+              this.lightConstants = x.lightConstants;
+
+              return this;
+            },
+            configurable: true
+          }
+        });
+
+        this.updateMatrix();
       }
     },
 
@@ -914,9 +1121,11 @@ var Tut = (() => {
     })(),
 
     ElementBuilder: class {
-      constructor (name) {
+      constructor (name, doc) {
         var __attr = new Map();
+        var __evt = [];
         var __text = null;
+        var __doc = doc || document;
 
         __checkType__(name, 'string');
         if (name === '') {
@@ -925,13 +1134,16 @@ var Tut = (() => {
 
         Object.defineProperty(this, 'build', {
           value: function () {
-            var e = document.createElement(name);
+            var e = __doc.createElement(name);
 
             for (let p of __attr) {
               e.setAttribute(p[0], p[1]);
             }
             if (__text !== null) {
-                Tut.setTextNode(e, __text);
+              Tut.setTextNode(e, __text);
+            }
+            for (let p of __evt) {
+              e.addEventListener(p.e, p.f, p.b);
             }
             return e;
           },
@@ -947,6 +1159,17 @@ var Tut = (() => {
         Object.defineProperty(this, 'text', {
           value: function (x) {
             __text = x;
+            return this;
+          },
+          configurable: true
+        });
+        Object.defineProperty(this, 'evt', {
+          value: function (e, f, b) {
+            __evt.push({
+              e: e,
+              f: f,
+              b: b
+            });
             return this;
           },
           configurable: true
@@ -967,8 +1190,8 @@ var Tut = (() => {
       throw Object.freeze(x);
     },
     // Convenience function for instantiating 'ElementBuilder'.
-    mkElement: (name) => {
-      return new Tut.ElementBuilder(name);
+    mkElement: (name, doc) => {
+      return new Tut.ElementBuilder(name, doc);
     },
     // Pad the string with a character.
     // 'str': the string to pad
@@ -996,12 +1219,14 @@ var Tut = (() => {
     // to inject malicious code.
     // 'e': the element to append a text node
     // 'str': the string to create a text node with
-    setTextNode: (e, str) => {
+    setTextNode: (e, str, doc) => {
+      let __doc = doc || document;
+
       while (e.firstChild) {
         e.removeChild(e.firstChild);
       }
       if (str && typeof str === 'string') {
-        e.appendChild(document.createTextNode(str));
+        e.appendChild(__doc.createTextNode(str));
       }
       return e;
     },
@@ -1021,24 +1246,50 @@ var Tut = (() => {
     // 'src': the string of the shader program to compile
     // 'type': the type of the shader program. Must be one of gl.VERTEX_SHADER
     // or gl.FRAGMENT_SHADER.
-    loadShader: (gl, src, type) => {
+    loadShader: (gl, src, type, opt) => {
       let shader, shaderInfo;
+      let cb;
+
+      opt = opt || {
+        verbose: true
+      };
+
+      if (opt.cb && Tut.checkClass(opt.cb, Function)) {
+        cb = opt.cb;
+      }
+      else if (opt.cb === null) {
+        cb = function () {};
+      }
+      else {
+        cb = function (head, msg, e) {
+          let f = e ? console.error : console.info;
+
+          if (msg) {
+            console.group(head);
+            f(msg);
+            console.groupEnd();
+          }
+          else {
+            f(head);
+          }
+        };
+      }
 
       shader = gl.createShader(type);
       if (!shader) {
         let e = new Tut.GLError(gl, "Could not create shader.");
-        Tut.throwFreezed(e);
+
+        Object.freeze(e);
+        cb("Could not create shader.", null, e);
+        throw e;
       }
 
       gl.shaderSource(shader, src);
       gl.compileShader(shader);
-      shaderInfo = gl.getShaderInfoLog(shader);
-
-      Tut.printLegit(shaderInfo);
 
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         const msg = [
-          "Failed to compile ",
+          "Error compiling ",
           (function () {
             switch (type) {
             case gl.FRAGMENT_SHADER: return 'fragment';
@@ -1046,29 +1297,76 @@ var Tut = (() => {
             }
             return '?';
           })(),
-          " shader."
+          " shader",
+          (function () {
+            return opt.name ? (" '" + opt.name + "'.") : '.';
+          })()
         ];
-        let e = new Tut.GLError(gl, msg.join(''));
-        e.infoLog = shaderInfo;
+        let head = msg.join('');
+        let e = new Tut.GLError(gl, head);
 
+        shaderInfo = gl.getShaderInfoLog(shader);
+        e.infoLog = shaderInfo;
+        Object.freeze(e);
+
+        cb(head, shaderInfo, e);
         gl.deleteShader(shader);
 
-        Tut.throwFreezed(e);
+        throw e;
+      }
+      if (opt.verbose) {
+        shaderInfo = gl.getShaderInfoLog(shader);
+
+        if (shaderInfo) {
+          let head = "Log occurred compiling shader";
+
+          if (opt.name) {
+            head += " '" + opt.name + "': ";
+          }
+          else {
+            head += ": ";
+          }
+          cb(head, shaderInfo);
+        }
       }
 
       return shader;
     },
     setupShader: function (gl, b) {
       let ret = {
+        name: b.name,
         prog: gl.createProgram(),
-        vert: Tut.loadShader(gl, b.vert, gl.VERTEX_SHADER),
-        frag: Tut.loadShader(gl, b.frag, gl.FRAGMENT_SHADER),
         attrMap: b.attrMap,
         unif: {}
       };
       let i;
       let progInfoLog;
+      let cb;
 
+      if (b.errCB && Tut.checkClass(b.errCB, Function)) {
+        cb = b.errCB;
+      }
+      else {
+        if (b.errCB === null) {
+          cb = function () {};
+        }
+        else {
+          cb = function (head, msg, e) {
+            let f = e ? console.error : console.info;
+
+            console.group(head);
+            f(msg);
+            console.groupEnd();
+          };
+        }
+      }
+
+      ret.vert = Tut.loadShader(gl, b.vert, gl.VERTEX_SHADER, {
+        name: b.name,
+        verbose: b.verbose});
+      ret.frag = Tut.loadShader(gl, b.frag, gl.FRAGMENT_SHADER, {
+        name: b.name,
+        verbose: b.verbose});
       gl.attachShader(ret.prog, ret.vert);
       gl.attachShader(ret.prog, ret.frag);
 
@@ -1077,12 +1375,39 @@ var Tut = (() => {
       }
 
       gl.linkProgram(ret.prog);
-      progInfoLog = gl.getProgramInfoLog(ret.prog);
-      Tut.printLegit(progInfoLog);
-      if (!gl.getProgramParameter(ret.prog, gl.LINK_STATUS)) {
+
+      if (gl.getProgramParameter(ret.prog, gl.LINK_STATUS)) {
+        if (b.verbose) {
+          progInfoLog = gl.getProgramInfoLog(ret.prog);
+          if (progInfoLog) {
+            let head = "Log occurred linking shader";
+
+            if (b.name) {
+              head += " '" + b.name + "':";
+            }
+            else {
+              head += " :";
+            }
+            cb(head, progInfoLog);
+          }
+        }
+      }
+      else {
         let e = new Tut.GLError(gl, "Failed to link program");
+        let head = "Error linking shader";
+
+        if (b.name) {
+          head += " '" + b.name + "':";
+        }
+        else {
+          head += " :";
+        }
+        progInfoLog = gl.getProgramInfoLog(ret.prog);
         e.infoLog = progInfoLog;
-        Tut.throwFreezed(e);
+        Object.freeze(e);
+
+        cb(head, progInfoLog, e);
+        throw e;
       }
 
       for (i of b.unif) {
@@ -1091,10 +1416,84 @@ var Tut = (() => {
 
       return ret;
     },
+    clearShader: function (gl, s) {
+      gl.deleteProgram(s.prog);
+      gl.deleteShader(s.vert);
+      gl.deleteShader(s.frag);
+    },
+    uploadModel: (function () {
+      return function (gl, m, opt) {
+        let ret = {
+          buf: {},
+          tex: {}
+        };
+        let __uploadBuffer, __uploadTexture;
+
+        opt = opt || {
+          array: {
+            uv: true,
+            normal: true,
+            tangent: true,
+            bitangent: true
+          },
+          texture: {
+            surface: true,
+            normal: true,
+            specular: true
+          },
+          texParam: {
+            'TEXTURE_MIN_FILTER': 'LINEAR_MIPMAP_LINEAR',
+            'TEXTURE_MAG_FILTER': 'LINEAR'
+          },
+          genMipmap: true
+        };
+        m.texture = m.texture || {};
+        __uploadBuffer = function (name, array, flag) {
+          if (flag && array) {
+            let b = ret.buf[name] = gl.createBuffer();
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, b);
+            gl.bufferData(gl.ARRAY_BUFFER, array, gl.STATIC_DRAW);
+          }
+        };
+        __uploadTexture = function (name, img, flag) {
+          if (flag && img) {
+            let t = ret.tex[name] = gl.createTexture();
+            let pname;
+
+            gl.bindTexture(gl.TEXTURE_2D, t);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+            for (pname in opt.texParam) {
+              gl.texParameteri(gl.TEXTURE_2D, gl[pname], gl[opt.texParam[pname]]);
+            }
+            if (opt.genMipmap &&
+                opt.texParam['TEXTURE_MIN_FILTER'] &&
+                opt.texParam['TEXTURE_MIN_FILTER'].includes('MIPMAP')) {
+              gl.generateMipmap(gl.TEXTURE_2D);
+            }
+          }
+        };
+
+        __uploadTexture('surface', m.texture.surface, opt.texture.surface);
+        __uploadTexture('normal', m.texture.normal, opt.texture.normal);
+        __uploadTexture('specular', m.texture.specular, opt.texture.specular);
+        __uploadBuffer('vertex', m.array.vertices, true);
+        __uploadBuffer('uv', m.array.uvs, opt.array.uv);
+        __uploadBuffer('normal', m.array.normals, opt.array.normal);
+        __uploadBuffer('tangent', m.array.tangents, opt.array.tangent);
+        __uploadBuffer('bitangent', m.array.bitangents, opt.array.bitangent);
+        ret.buf.index = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ret.buf.index);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.indices, gl.STATIC_DRAW);
+
+        return ret;
+      };
+    })(),
     // Prints the capability of the WebGL rendering context to the console.
     // For debugging purpose.
     // 'gl': a WebGL rendering context
-    printGLCap: (gl) => {
+    // 'cb': a callback function with which to receive output string
+    printGLCap: (gl, cb) => {
       var shaderPrecision = (s, t) => {
         var x = gl.getShaderPrecisionFormat(gl[s], gl[t]);
 
@@ -1120,6 +1519,10 @@ var Tut = (() => {
       };
       var arr;
 
+      cb = cb || function (str) {
+        console.info(str);
+      };
+
       arr = [];
       arr.push(glParam("GL_MAX_TEXTURE_IMAGE_UNITS"));
       arr.push(glParam("GL_MAX_VERTEX_UNIFORM_VECTORS"));
@@ -1128,7 +1531,9 @@ var Tut = (() => {
       arr.push(glParam("GL_MAX_VARYING_VECTORS"));
       arr.push(glParam("GL_ALIASED_POINT_SIZE_RANGE"));
       arr.push(glParam("GL_SAMPLES"));
-      console.info(arr.join("\n"));
+      arr.push(glParam("GL_MAX_RENDERBUFFER_SIZE"));
+      arr.push(glParam("GL_DEPTH_BITS"));
+      cb(arr.join("\n"));
 
       arr = [];
       arr.push(shaderPrecision("VERTEX_SHADER", "LOW_FLOAT"));
@@ -1143,9 +1548,9 @@ var Tut = (() => {
       arr.push(shaderPrecision("FRAGMENT_SHADER", "LOW_INT"));
       arr.push(shaderPrecision("FRAGMENT_SHADER", "MEDIUM_INT"));
       arr.push(shaderPrecision("FRAGMENT_SHADER", "HIGH_INT"));
-      console.info(arr.join("\n"));
+      cb(arr.join("\n"));
 
-      console.info(gl.getSupportedExtensions().join("\n"));
+      cb(gl.getSupportedExtensions().join("\n"));
     },
 
     checkClass: function () {
@@ -1203,6 +1608,16 @@ var Tut = (() => {
             }
           },
 
+          parseOpt: function () {
+            return {
+              loadList: {
+                uvs: true,
+                normals: true,
+                tangents: true
+              }
+            };
+          },
+
           // Parses an OBJ file format string and returns an object containing
           // parsed data like vertices and normals.
           // 'src': a string of OBJ file content
@@ -1212,11 +1627,11 @@ var Tut = (() => {
           // a different parsing result. Below is an example option:
           // {
           //   loadList: {
-          //     // Whether to parse and return UV coordinates.
+          //     // Parse UV coordinates.
           //     'uvs': true,
-          //     // Whether to parse and return normal vectors.
+          //     // Parse or calculate normal vectors.
           //     'normals': true,
-          //     // Whether to calculate and return tangents and bitangents from uvs and normals.
+          //     // Calculate tangents and bitangents from uvs and normals.
           //     'tangents': true
           //   }
           // }
@@ -1225,11 +1640,12 @@ var Tut = (() => {
           //   array: { // Vertex attributes
           //     vertices: Float32Array,
           //     uvs: Float32Array or null,
-          //     normals: Float32Array or null
+          //     normals: Float32Array
           //     tangents: Float32Array or null
           //     bitangents: Float32Array or null
           //   },
-          //   indices: Uint16Array // glDrawElement() parameter.
+          //   indices: Uint16Array, // glDrawElement() parameter.
+          //   normalsFromData: Boolean // True if normal vectors are parsed from data
           // }
           parse: (() => {
             // Parse a string expected to be a float.
@@ -1267,15 +1683,10 @@ var Tut = (() => {
               let arrLines, arrWords, arrIndices, mapIndices, mapMaxIndex;
               let vertices, uvs, normals;
               let w, index, to, from;
+              let has = {};
               let ret;
 
-              opt = opt || {
-                loadList: {
-                  uvs: true,
-                  normals: true,
-                  tangents: true
-                }
-              };
+              opt = opt || Tut.OBJ.parseOpt();
               vertices = [];
               uvs = opt.loadList.uvs ? [] : null;
               normals = opt.loadList.normals ? [] : null;
@@ -1400,26 +1811,24 @@ var Tut = (() => {
                   checkBounds('Vertex', normals.length / 3, mapMaxIndex[2]);
                 }
               }
-              {
-                // Construct return object.
-                // Rebuild UV and Normal vectors for use in OpenGL.
-                let has = {};
+              // Construct return object.
+              // Rebuild UV and Normal vectors for use in OpenGL.
 
-                has.uvs = mapIndices[1].length > 0;
-                has.normals = mapIndices[2].length > 0;
-                has.tangents = has.uvs && has.normals;
+              has.uvs = mapIndices[1].length > 0;
+              has.normals = mapIndices[2].length > 0;
 
-                ret = {
-                  array: {
-                    vertices: new Float32Array(vertices),
-                    uvs: opt.loadList.uvs ? new Float32Array(has.uvs ? vertices.length / 3 * 2 : 0) : null,
-                    normals: opt.loadList.normals ? new Float32Array(has.normals ? vertices.length : 0) : null,
-                    tangents: opt.loadList.tangents ? new Float32Array(has.tangents ? vertices.length : 0) : null,
-                    bitangents: opt.loadList.tangents ? new Float32Array(has.tangents ? vertices.length : 0) : null
-                  },
-                  indices: new Uint16Array(mapIndices[0])
-                };
-              }
+              ret = {
+                array: {
+                  vertices: new Float32Array(vertices),
+                  uvs: opt.loadList.uvs ? new Float32Array(has.uvs ? vertices.length / 3 * 2 : 0) : null,
+                  normals: opt.loadList.normals ? new Float32Array(vertices.length) : null,
+                  tangents: opt.loadList.tangents ? new Float32Array(has.uvs ? vertices.length : 0) : null,
+                  bitangents: opt.loadList.tangents ? new Float32Array(has.uvs ? vertices.length : 0) : null
+                },
+                indices: new Uint16Array(mapIndices[0]),
+                normalsFromData: has.normals
+              };
+
               if (ret.array.uvs) {
                 // Copy UV.
                 for (i = 0; i < mapIndices[0].length; i += 1) {
@@ -1430,13 +1839,63 @@ var Tut = (() => {
                 }
               }
               if (ret.array.normals) {
-                // Copy Normal.
-                for (i = 0; i < mapIndices[0].length; i += 1) {
-                  to = mapIndices[0][i] * 3;
-                  from = mapIndices[2][i] * 3;
-                  ret.array.normals[to] = normals[from];
-                  ret.array.normals[to + 1] = normals[from + 1];
-                  ret.array.normals[to + 2] = normals[from + 2];
+                if (has.normals) {
+                  // Copy Normal.
+                  for (i = 0; i < mapIndices[0].length; i += 1) {
+                    to = mapIndices[0][i] * 3;
+                    from = mapIndices[2][i] * 3;
+                    ret.array.normals[to] = normals[from];
+                    ret.array.normals[to + 1] = normals[from + 1];
+                    ret.array.normals[to + 2] = normals[from + 2];
+                  }
+                }
+                else {
+                  // Calculate normal from vertices.
+                  let v = {
+                    a: vec3.create(),
+                    b: vec3.create(),
+                    c: vec3.create()
+                  };
+                  let n = {
+                    a: vec3.create(),
+                    b: vec3.create(),
+                    c: vec3.create()
+                  };
+                  let d = {
+                    a: vec3.create(),
+                    b: vec3.create()
+                  };
+
+                  for (i = 0; i < mapIndices[0].length; i += 3) {
+                    to = mapIndices[0][i] * 3;
+                    [v.a[0], v.a[1], v.a[2]] = [vertices[to], vertices[to + 1], vertices[to + 2]];
+                    to = mapIndices[0][i + 1] * 3;
+                    [v.b[0], v.b[1], v.b[2]] = [vertices[to], vertices[to + 1], vertices[to + 2]];
+                    to = mapIndices[0][i + 2] * 3;
+                    [v.c[0], v.c[1], v.c[2]] = [vertices[to], vertices[to + 1], vertices[to + 2]];
+
+                    vec3.sub(d.a, v.b, v.a);
+                    vec3.sub(d.b, v.c, v.a);
+                    vec3.cross(n.a, d.a, d.b);
+                    vec3.add(n.a, n.a, v.a);
+
+                    vec3.sub(d.a, v.a, v.b);
+                    vec3.sub(d.b, v.c, v.a);
+                    vec3.cross(n.b, d.a, d.b);
+                    vec3.add(n.b, n.b, v.b);
+
+                    vec3.sub(d.a, v.b, v.c);
+                    vec3.sub(d.b, v.a, v.c);
+                    vec3.cross(n.c, d.a, d.b);
+                    vec3.add(n.c, n.c, v.c);
+
+                    to = mapIndices[0][i] * 3;
+                    [ret.array.normals[to], ret.array.normals[to + 1], ret.array.normals[to + 2]] = [n.a[0], n.a[1], n.a[2]];
+                    to = mapIndices[0][i + 1] * 3;
+                    [ret.array.normals[to], ret.array.normals[to + 1], ret.array.normals[to + 2]] = [n.b[0], n.b[1], n.b[2]];
+                    to = mapIndices[0][i + 2] * 3;
+                    [ret.array.normals[to], ret.array.normals[to + 1], ret.array.normals[to + 2]] = [n.c[0], n.c[1], n.c[2]];
+                  }
                 }
               }
               if (ret.array.tangents) {
@@ -1485,16 +1944,14 @@ var Tut = (() => {
                   [d.uv.a[0], d.uv.a[1]] = [uvs[idx.a] - uvs[idx.b], uvs[idx.a + 1] - uvs[idx.b + 1]];
                   [d.uv.b[0], d.uv.b[1]] = [uvs[idx.c] - uvs[idx.b], uvs[idx.c + 1] - uvs[idx.b + 1]];
                   // Fetch normals.
-                  idx.a = mapIndices[2][i + 1] * 3;
-                  idx.b = mapIndices[2][i] * 3;
-                  idx.c = mapIndices[2][i + 2] * 3;
-                  [n.a[0], n.a[1], n.a[2]] = [normals[idx.a], normals[idx.a + 1], normals[idx.a + 2]];
-                  [n.b[0], n.b[1], n.b[2]] = [normals[idx.b], normals[idx.b + 1], normals[idx.b + 2]];
-                  [n.c[0], n.c[1], n.c[2]] = [normals[idx.c], normals[idx.c + 1], normals[idx.c + 2]];
-                  // Calc this for the last to reuse 'idx'.
+                  // Use 'ret.array.normal'
                   idx.a = mapIndices[0][i + 1] * 3;
                   idx.b = mapIndices[0][i] * 3;
                   idx.c = mapIndices[0][i + 2] * 3;
+                  [n.a[0], n.a[1], n.a[2]] = [ret.array.normals[idx.a], ret.array.normals[idx.a + 1], ret.array.normals[idx.a + 2]];
+                  [n.b[0], n.b[1], n.b[2]] = [ret.array.normals[idx.b], ret.array.normals[idx.b + 1], ret.array.normals[idx.b + 2]];
+                  [n.c[0], n.c[1], n.c[2]] = [ret.array.normals[idx.c], ret.array.normals[idx.c + 1], ret.array.normals[idx.c + 2]];
+                  // Vertex delta.
                   [d.vert.a[0], d.vert.a[1], d.vert.a[2]] = [vertices[idx.a] - vertices[idx.b], vertices[idx.a + 1] - vertices[idx.b + 1], vertices[idx.a + 2] - vertices[idx.b + 2]];
                   [d.vert.b[0], d.vert.b[1], d.vert.b[2]] = [vertices[idx.c] - vertices[idx.b], vertices[idx.c + 1] - vertices[idx.b + 1], vertices[idx.c + 2] - vertices[idx.b + 2]];
 
@@ -1550,7 +2007,61 @@ var Tut = (() => {
         };
 
         return __ns__;
-    })()
+    })(),
+
+    parseCoor: function (str, expect) {
+      let arr, e, n, ret;
+
+      if (!str.match(/^(?:\s+)?(?:(?:(?:-?[0-9]+(?:\.[0-9]+)?)(?:(?:\s+)?,(?:\s+)?))+)?(?:-?[0-9]+(?:\.[0-9]+)?)(?:\s+)?$/)) {
+        return null;
+      }
+      arr = str.trim().split(/(?:(?:\s+)?,(?:\s+)?)/);
+      if (expect && expect !== arr.length) {
+        return null;
+      }
+
+      ret = [];
+      for (e of arr) {
+        n = parseFloat(e);
+        if (isNaN(n)) {
+        // if (!isFinite(n)) {
+          return null;
+        }
+        ret.push(n);
+      }
+
+      return ret;
+    },
+    coorStr: function (arr, precision) {
+      let p = [];
+      let e;
+
+      if (precision) {
+        for (e of arr) {
+          p.push(e.toFixed(precision));
+        }
+      }
+      else {
+        for (e of arr) {
+          p.push(e);
+        }
+      }
+
+      return p.join(', ');
+    },
+
+    parseURIQuery: function (str) {
+      let arr = str.split('&');
+      let e, p;
+      let ret = {};
+
+      for (e of arr) {
+        p = e.split('=');
+        ret[decodeURIComponent(p[0])] = decodeURIComponent(p[1]);
+      }
+
+      return ret;
+    }
   };
 
   // External library augmentation.

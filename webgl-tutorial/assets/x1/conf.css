@@ -1,0 +1,7 @@
+tr.objectRow {
+  text-align: center;
+}
+
+tr.objectRow:hover {
+  background-color: gray;
+}
