@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+	Copyright (c) 2022 David Timber <dxdt@dev.snart.me>
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+-->
+<head>
+	<meta charset="utf-8">
+	<title>AWS Public IP Address Ranges in CSV</title>
+
+	<script src="index.js"></script>
+
+	<style>
+		.working-animated {
+			animation-name: blink;
+			animation-duration: 0.5s;
+			animation-iteration-count: infinite;
+			animation-play-state: running;
+			animation-timing-function: steps(2, start);
+		}
+
+		.hidden {
+			visibility: hidden;
+		}
+
+		.error {
+			color: red;
+			font-weight: bold;
+		}
+
+		@keyframes blink {
+			to {
+				visibility: hidden;
+			}
+		}
+		.foot {
+			text-align: right;
+		}
+	</style>
+</head>
+<body onload="do_load()">
+	<h1>AWS Public IP Address Ranges in CSV</h1>
+	<p>
+		This tool pulls <a
+		href="https://ip-ranges.amazonaws.com/ip-ranges.json">the JSON data</a>
+		from the AWS and convert it to CSV, along with other calculated data
+		such as the size of each address block. The file can be imported to a
+		spreadsheet software of your choice to extract the desired data using
+		filters.
+	</p>
+
+	<section>
+	<h2>Tool Options</h2>
+	<form name="form" method="dialog" onsubmit="do_submit()">
+		<p>
+			<input type="checkbox" name="ipv4" checked>
+			<label for="ipv4">Pull IPv4 blocks</label>
+		</p>
+		<p>
+			<input type="checkbox" name="ipv6">
+			<label for="ipv6">Pull IPv6 blocks</label>
+		</p>
+		<p>
+			<button type="submit" name="submit">Go!</button>
+			<label for="submit">&lt;- Requires a fair bit of memory!</label>
+		</p>
+	</form>
+	<p>
+		<span id="working-indicator" class="hidden"></span>
+		<a id="save-link" target="_blank" href="" class="hidden">Save CSV file</a>
+	</p>
+	</section>
+
+	<h2>Format</h2>
+<pre>
+IPV  REGION          NETGRP          SERVICE  NET               CIDR  SIZE
+4    af-south-1      af-south-1      AMAZON   3.2.34.0          26    64
+4    ap-northeast-2  ap-northeast-2  AMAZON   3.5.140.0         22    1024
+4    ap-southeast-4  ap-southeast-4  AMAZON   13.34.37.64       27    32
+4    il-central-1    il-central-1    AMAZON   13.34.65.64       27    32
+4    us-east-1       us-east-1       AMAZON   13.34.66.0        27    32
+4    ca-central-1    ca-central-1    AMAZON   13.34.78.160      27    32
+4    us-west-2       us-west-2       AMAZON   13.34.103.96      27    32
+</pre>
+	<h3>Where ...</h3>
+	<ul>
+		<li><b>IPV</b> is either 4 or 6</li>
+		<li><b>SIZE</b> is the number of addresses in the block</li>
+	</ul>
+	<p>For IPv6 addresses, the CIDR length can be enormous. The tool handles
+	them using <code>BigInt</code>, but your spreadsheet software can struggle
+	to handle it. It will most likely show the numbers in scientific
+	representation.</p>
+	<p class="foot">
+		<small>by David Timber &lt;dxdt@dev.snart.me&gt; (c) 2023</small>
+	</p>
+</body>
+</html>
