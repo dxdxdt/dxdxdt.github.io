@@ -759,31 +759,31 @@
           }
         };
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.pos);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.FLOAT, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.FLOAT, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.normal);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.FLOAT, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.FLOAT, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.final);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.uv);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.specular);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.color.ambient);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.light);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.a);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         setNPOT();
         gl.bindTexture(gl.TEXTURE_2D, gr.rt.bloom.b);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, renderDim.w, renderDim.h, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, renderDim.w, renderDim.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         setNPOT();
 
         // Prep Framebuffers.
