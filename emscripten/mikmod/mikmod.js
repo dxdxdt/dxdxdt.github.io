@@ -29,8 +29,6 @@ if (Module['ENVIRONMENT']) {
   throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
 }
 
-Module['arguments'] = [ '-p', '4', '-y', 'music' ]
-
 if (ENVIRONMENT_IS_NODE) {
   // `require()` is no-op in an ESM module, use `createRequire()` to construct
   // the require()` function.  This is only necessary for multi-environment
@@ -41,3365 +39,6 @@ if (ENVIRONMENT_IS_NODE) {
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /home/david/dev/ws/emsdk/upstream/emscripten/cache/sysroot/lib/termlib.js
-/*
-  termlib.js - JS-WebTerminal Object v1.63
-
-  (c) Norbert Landsteiner 2003-2013
-  mass:werk - media environments
-  <http://www.masswerk.at/termlib/>
-
-  Creates [multiple] Terminal instances.
-
-  Synopsis:
-
-  myTerminal = new Terminal(<config object>);
-  myTerminal.open();
-
-  <config object> overrides any values of object `TerminalDefaults'.
-  individual values of `id' must be supplied for multiple terminals.
-  `handler' specifies a function to be called for input handling.
-  (see `Terminal.prototype.defaultHandler()' and documentation.)
-
-  globals defined in this library:
-  	Terminal           (Terminal object)
-    TerminalDefaults   (default configuration)
-    termDefaultHandler (default command line handler)
-    TermGlobals        (common vars and code for all instances)
-    termKey            (named mappings for special keys)
-    termDomKeyRef      (special key mapping for DOM constants)
-
-  (please see the v. 1.4 history entry on these elements)
-
-  required CSS classes for font definitions: ".term", ".termReverse".
-
-  Compatibilty:
-  Standard web browsers with a JavaScript implementation compliant to
-  ECMA-262 2nd edition and support for the anonymous array and object
-  constructs and the anonymous function construct in the form of
-  "myfunc=function(x) {}" (c.f. ECMA-262 3rd edion for details).
-  This comprises almost all current browsers but Konquerer (khtml) and
-  versions of Apple Safari for Mac OS 10.0-10.28 (Safari 1.0) which
-  lack support for keyboard events.
-  v1.5: Dropped support of Netscape 4 (layers)
-
-  License:
-  This JavaScript-library is free.
-  Include a visible backlink to <http://www.masswerk.at/termlib/> in the
-  embedding web page or application.
-  The library should always be accompanied by the 'readme.txt' and the
-  sample HTML-documents.
-
-  Any changes should be commented and must be reflected in `Terminal.version'
-  in the format: "Version.Subversion (compatibility)".
-
-  Donations:
-  Donations are welcome: You may support and/or honor the development of
-  "termlib.js" via PayPal at: <http://www.masswerk.at/termlib/donate/>
-
-  Disclaimer:
-  This software is distributed AS IS and in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. The entire risk as to
-  the quality and performance of the product is borne by the user. No use of
-  the product is authorized hereunder except under this disclaimer.
-
-  ### The sections above must not be removed. ###
-
-  version 1.01: added Terminal.prototype.resizeTo(x,y)
-                added Terminal.conf.fontClass (=> configureable class name)
-                Terminal.prototype.open() now checks for element conf.termDiv
-                in advance and returns success.
-
-  version 1.02: added support for <TAB> and Euro sign
-                (Terminal.conf.printTab, Terminal.conf.printEuro)
-                and a method to evaluate printable chars:
-                Terminal.prototype.isPrintable(keycode)
-
-  version 1.03: added global keyboard locking (TermGlobals.keylock)
-                modified Terminal.prototype.redraw for speed (use of locals)
-
-  version 1.04: modified the key handler to fix a bug with MSIE5/Mac
-                fixed a bug in TermGlobals.setVisible with older MSIE-alike
-                browsers without DOM support.
-
-  version 1.05: added config flag historyUnique.
-
-  version 1.06: fixed CTRl+ALT (Windows alt gr) isn't CTRL any more
-                fixed double backspace bug for Safari;
-                added TermGlobals.setDisplay for setting style.display props
-                termlib.js now outputs lower case html (xhtml compatibility)
-
-  version 1.07: added method rebuild() to rebuild with new color settings.
-
-  version 1.1:  fixed a bug in 'more' output mode (cursor could be hidden after
-                quit)
-                added socket-extension for server-client talk in a separate file
-                -> "temlib_socket.js" (to be loaded after termlib.js)
-                (this is a separate file because we break our compatibility
-                guide lines with this IO/AJAX library.)
-
-  version 1.2   added color support ("%[+-]c(<color>)" markup)
-                moved paste support from sample file to lib
-                * TermGlobals.insertText( <text>)
-                * TermGlobals.importEachLine( <text> )
-                * TermGlobals.importMultiLine( <text> )
-
-  version 1.3   added word wrapping to write()
-                * activate with myTerm.wrapOn()
-                * deactivate with myTerm.wrapOff()
-                use conf.wrapping (boolean) for a global setting
-
-  version 1.4   Terminal is now an entirely self-contained object
-                Global references to inner objects for backward compatipility:
-                * TerminalDefaults   => Terminal.prototype.Defaults
-                * termDefaultHandler => Terminal.prototype.defaultHandler
-                * termKey            => Terminal.prototype.globals.termKey
-                                        see also: Terminal.prototype.termKey
-                * TermGlobals        => Terminal.prototype.globals
-                * termDomKeyRef      => Terminal.prototype.globals.termDomKeyRef
-
-                So in effect to outside scripts everything remains the same;
-                no need to rewrite any existing scripts.
-                You may now use "this.globals" inside any handlers
-                to refer to the static global object (TermGlobals).
-                You may also refer to key definitions as "this.termKey.*".
-                (Please mind that "this.termKey" is a reference to the static object
-                and not specific to the instance. A change to "this.termKey" will be
-                by any other instances of Terminal too.)
-
-                Added method TermGlobals.assignStyle() for custom styles & mark up.
-
-                Unified the color mark up: You may now use color codes (decimal or hex)
-                inside brackets. e.g.: %c(10)DARKRED%c() or %c(a)DARKRED%c()
-
-                Added key repeat for remapped keys (cursor movements etc).
-
-  version 1.41  fixed a bug in the word wrapping regarding write() output, when
-                the cursor was set with cursorSet() before.
-
-  version 1.42  fixed a bug which caused Opera to delete 2 chars at once.
-                introduced property Terminal.isOpera (Boolean)
-
-  version 1.43  enhanced the control handler so it also catches ESC if flag closeOnESC
-                is set to false. fixed a bug with Safari which fired repeated events
-                for the control handler for TAB if flag printTab was set to false.
-
-  version 1.5   Changed the license.
-                Dropped support for Netscape 4 (layers).
-                HTML-elements are now created by document.createElement, if applicable.
-                Included the formerly separate socket extension in the main library.
-                Added methods 'backupScreen()' and 'restoreScreen()' to save a screen
-                and restore it's content from backup. (see the globbing sample).
-
-  version 1.51  Added basic support of ANSI-SGR-sequences.
-
-  version 1.52  Added method swapBackup(), reorganized some of the accompanying files.
-
-  version 1.54  Fixed BACK_SPACE for Chrome, DELETE for Safari/WebKit.
-
-  version 1.55  Fixed dead keys issue for Mac OS (Leapard & later), vowels only.
-  version 1.56  Fixed new ESC issue for Safari.
-  version 1.57  Fixed dead keys fix: now only for Safari/Mac, German (de-de).
-  version 1.59  Dropped dead keys fix, fixed backspace for Safari.
-  version 1.6   Saved some bytes by discarding traces of ancient condition syntax
-                Added input mode "fieldMode"
-  version 1.61  Changes to defaults implementation of the constructor.
-  version 1.62  Fixed a bug related to AltGr-sequences with IE8+.
-
-*/
-
-var Terminal = function(conf) {
-	if (typeof conf != 'object') conf=new Object();
-	for (var i in this.Defaults) {
-		if (typeof conf[i] == 'undefined') conf[i]=this.Defaults[i];
-	}
-	if (typeof conf.handler != 'function') conf.handler=Terminal.prototype.defaultHandler;
-	this.conf=conf;
-	this.setInitValues();
-}
-
-
-Terminal.prototype = {
-// prototype definitions (save some 2k on indentation)
-
-version: '1.62 (original)',
-
-Defaults: {
-	// dimensions
-	cols:80,
-	rows:24,
-	// appearance
-	x:100,
-	y:100,
-	termDiv:'termDiv',
-	bgColor:'#181818',
-	frameColor:'#555555',
-	frameWidth:1,
-	rowHeight:15,
-	blinkDelay:500,
-	// css class
-	fontClass:'term',
-	// initial cursor mode
-	crsrBlinkMode:false,
-	crsrBlockMode:true,
-	// key mapping
-	DELisBS:false,
-	printTab:true,
-	printEuro:true,
-	catchCtrlH:true,
-	closeOnESC:true,
-	// prevent consecutive history doublets
-	historyUnique:false,
-	// optional id
-	id:0,
-	// strings
-	ps:'>',
-	greeting:'%+r Terminal ready. %-r',
-	// handlers
-	handler:null,
-	ctrlHandler:null,
-	initHandler:null,
-	exitHandler:null,
-	wrapping:false,
-	mapANSI:false,
-	ANSItrueBlack:false
-},
-
-setInitValues: function() {
-	this.isSafari= (navigator.userAgent.indexOf('Safari')>=0 || navigator.userAgent.indexOf('WebKit')>=0)? true:false;
-	this.isOpera= (window.opera && navigator.userAgent.indexOf('Opera')>=0)? true:false;
-	this.isChrome= (navigator.userAgent.indexOf('Chrome/')>=0 && navigator.userAgent.indexOf('WebKit')>=0)? true:false;
-	this.domAPI= (document && document.createElement)? true:false;
-	this.isMac= (navigator.userAgent.indexOf('Mac')>=0)? true:false;
-	this.id=this.conf.id;
-	this.maxLines=this.conf.rows;
-	this.maxCols=this.conf.cols;
-	this.termDiv=this.conf.termDiv;
-	this.crsrBlinkMode=this.conf.crsrBlinkMode;
-	this.crsrBlockMode=this.conf.crsrBlockMode;
-	this.blinkDelay=this.conf.blinkDelay;
-	this.DELisBS=this.conf.DELisBS;
-	this.printTab=this.conf.printTab;
-	this.printEuro=this.conf.printEuro;
-	this.catchCtrlH=this.conf.catchCtrlH;
-	this.closeOnESC=this.conf.closeOnESC;
-	this.historyUnique=this.conf.historyUnique;
-	this.ps=this.conf.ps;
-	this.closed=false;
-	this.r;
-	this.c;
-	this.charBuf=new Array();
-	this.styleBuf=new Array();
-	this.scrollBuf=null;
-	this.blinkBuffer=0;
-	this.blinkTimer;
-	this.cursoractive=false;
-	this.lock=true;
-	this.insert=false;
-	this.charMode=false;
-	this.rawMode=false;
-	this.lineBuffer='';
-	this.inputChar=0;
-	this.lastLine='';
-	this.guiCounter=0;
-	this.history=new Array();
-	this.histPtr=0;
-	this.env=new Object();
-	this.buckupBuffer=null;
-	this.handler=this.conf.handler;
-	this.wrapping=this.conf.wrapping;
-	this.mapANSI=this.conf.mapANSI;
-	this.ANSItrueBlack=this.conf.ANSItrueBlack;
-	this.ctrlHandler=this.conf.ctrlHandler;
-	this.initHandler=this.conf.initHandler;
-	this.exitHandler=this.conf.exitHandler;
-	this.fieldMode=false;
-	this.fieldStart=this.fieldEnd=this.fieldC=0;
-},
-
-defaultHandler: function() {
-	this.newLine();
-	if (this.lineBuffer != '') {
-		this.type('You typed: '+this.lineBuffer);
-		this.newLine();
-	}
-	this.prompt();
-},
-
-open: function() {
-	if (this.termDivReady()) {
-		if (!this.closed) this._makeTerm();
-		this.init();
-		return true;
-	}
-	else {
-		return false;
-	}
-},
-
-close: function() {
-	this.lock=true;
-	this.cursorOff();
-	if (this.exitHandler) this.exitHandler();
-	this.globals.setVisible(this.termDiv,0);
-	this.closed=true;
-},
-
-init: function() {
-	// wait for gui
-	if (this.guiReady()) {
-		this.guiCounter=0;
-		// clean up at re-entry
-		if (this.closed) {
-			this.setInitValues();
-		}
-		this.clear();
-		this.globals.setVisible(this.termDiv,1);
-		this.globals.enableKeyboard(this);
-		if (this.initHandler) {
-			this.initHandler();
-		}
-		else {
-			this.write(this.conf.greeting);
-			this.newLine();
-			this.prompt();
-		}
-	}
-	else {
-		this.guiCounter++;
-		if (this.guiCounter>18000) {
-			if (confirm('Terminal:\nYour browser hasn\'t responded for more than 2 minutes.\nRetry?')) {
-				this.guiCounter=0;
-			}
-			else {
-				return;
-			}
-		};
-		this.globals.termToInitialze=this;
-		window.setTimeout('Terminal.prototype.globals.termToInitialze.init()',200);
-	}
-},
-
-getRowArray: function(l,v) {
-	// returns a fresh array of l length initialized with value v
-	var a=new Array();
-	for (var i=0; i<l; i++) a[i]=v;
-	return a;
-},
-
-wrapOn: function() {
-	// activate word wrap, wrapping workes with write() only!
-	this.wrapping=true;
-},
-
-wrapOff: function() {
-	this.wrapping=false;
-},
-
-// main output methods
-
-type: function(text,style) {
-	for (var i=0; i<text.length; i++) {
-		var ch=text.charCodeAt(i);
-		if (!this.isPrintable(ch)) ch=94;
-		this.charBuf[this.r][this.c]=ch;
-		this.styleBuf[this.r][this.c]=(style)? style:0;
-		var last_r=this.r;
-		this._incCol();
-		if (this.r!=last_r) this.redraw(last_r);
-	}
-	this.redraw(this.r)
-},
-
-write: function(text,usemore) {
-	// write to scroll buffer with markup
-	// new line = '%n' prepare any strings or arrys first
-	if (typeof text != 'object') {
-		if (typeof text!='string') text=''+text;
-		if (text.indexOf('\n')>=0) {
-			var ta=text.split('\n');
-			text=ta.join('%n');
-		}
-	}
-	else {
-		if (text.join) {
-			text=text.join('%n');
-		}
-		else {
-			text=''+text;
-		}
-		if (text.indexOf('\n')>=0) {
-			var ta=text.split('\n');
-			text=ta.join('%n');
-		}
-	}
-	if (this.mapANSI) text=this.globals.ANSI_map(text, this.ANSItrueBlack);
-	this._sbInit(usemore);
-	var chunks=text.split('%');
-	var esc=(text.charAt(0)!='%');
-	var style=0;
-	var styleMarkUp=this.globals.termStyleMarkup;
-	for (var i=0; i<chunks.length; i++) {
-		if (esc) {
-			if (chunks[i].length>0) {
-				this._sbType(chunks[i],style);
-			}
-			else if (i>0) {
-				this._sbType('%', style);
-			}
-			esc=false;
-		}
-		else {
-			var func=chunks[i].charAt(0);
-			if (chunks[i].length==0 && i>0) {
-				this._sbType("%",style);
-				esc=true;
-			}
-			else if (func=='n') {
-				this._sbNewLine(true);
-				if (chunks[i].length>1) this._sbType(chunks[i].substring(1),style);
-			}
-			else if (func=='+') {
-				var opt=chunks[i].charAt(1);
-				opt=opt.toLowerCase();
-				if (opt=='p') {
-					style=0;
-				}
-				else if (styleMarkUp[opt]) {
-					style|=styleMarkUp[opt];
-				}
-				if (chunks[i].length>2) this._sbType(chunks[i].substring(2),style);
-			}
-			else if (func=='-') {
-				var opt=chunks[i].charAt(1);
-				opt=opt.toLowerCase();
-				if (opt=='p') {
-					style=0;
-				}
-				else if (styleMarkUp[opt]) {
-					style&=~styleMarkUp[opt];
-				}
-				if (chunks[i].length>2) this._sbType(chunks[i].substring(2),style);
-			}
-			else if (chunks[i].length>1 && func=='c') {
-				var cinfo=this._parseColor(chunks[i].substring(1));
-				style=(style&(~0xfffff0))|cinfo.style;
-				if (cinfo.rest) this._sbType(cinfo.rest,style);
-			}
-			else if (chunks[i].length>1 && chunks[i].charAt(0)=='C' && chunks[i].charAt(1)=='S') {
-				this.clear();
-				this._sbInit();
-				if (chunks[i].length>2) this._sbType(chunks[i].substring(2),style);
-			}
-			else {
-				if (chunks[i].length>0) this._sbType(chunks[i],style);
-			}
-		}
-	}
-	this._sbOut();
-},
-
-// parse a color markup
-_parseColor: function(chunk) {
-	var rest='';
-	var style=0;
-	if (chunk.length) {
-		if (chunk.charAt(0)=='(') {
-			var clabel='';
-			for (var i=1; i<chunk.length; i++) {
-				var c=chunk.charAt(i);
-				if (c==')') {
-					if (chunk.length>i) rest=chunk.substring(i+1);
-					break;
-				}
-				clabel+=c;
-			}
-			if (clabel) {
-				if (clabel.charAt(0) == '@') {
-					var sc=this.globals.nsColors[clabel.substring(1).toLowerCase()];
-					if (sc) style=(16+sc)*0x100;
-				}
-				else if (clabel.charAt(0) == '#') {
-					var cl=clabel.substring(1).toLowerCase();
-					var sc=this.globals.webColors[cl];
-					if (sc) {
-						style=sc*0x10000;
-					}
-					else {
-						cl=this.globals.webifyColor(cl);
-						if (cl) style=this.globals.webColors[cl]*0x10000;
-					}
-				}
-				else if (clabel.length && clabel.length<=2) {
-					var isHex=false;
-					for (var i=0; i<clabel.length; i++) {
-						if (this.globals.isHexOnlyChar(clabel.charAt(i))) {
-							isHex=true;
-							break;
-						}
-					}
-					var cl=(isHex)? parseInt(clabel, 16):parseInt(clabel,10);
-					if (!isNaN(cl) || cl<=15) {
-						style=cl*0x100;
-					}
-				}
-				else {
-					style=this.globals.getColorCode(clabel)*0x100;
-				}
-			}
-		}
-		else {
-			var c=chunk.charAt(0);
-			if (this.globals.isHexChar(c)) {
-				style=this.globals.hexToNum[c]*0x100;
-				rest=chunk.substring(1);
-			}
-			else {
-				rest=chunk;
-			}
-		}
-	}
-	return { rest: rest, style: style };
-},
-
-// internal scroll buffer output methods
-
-_sbInit: function(usemore) {
-	var sb=this.scrollBuf=new Object();
-	var sbl=sb.lines=new Array();
-	var sbs=sb.styles=new Array();
-	sb.more=usemore;
-	sb.line=0;
-	sb.status=0;
-	sb.r=0;
-	sb.c=this.c;
-	sbl[0]=this.getRowArray(this.conf.cols,0);
-	sbs[0]=this.getRowArray(this.conf.cols,0);
-	for (var i=0; i<this.c; i++) {
-		sbl[0][i]=this.charBuf[this.r][i];
-		sbs[0][i]=this.styleBuf[this.r][i];
-	}
-},
-
-_sbType: function(text,style) {
-	// type to scroll buffer
-	var sb=this.scrollBuf;
-	for (var i=0; i<text.length; i++) {
-		var ch=text.charCodeAt(i);
-		if (!this.isPrintable(ch)) ch=94;
-		sb.lines[sb.r][sb.c]=ch;
-		sb.styles[sb.r][sb.c++]=(style)? style:0;
-		if (sb.c>=this.maxCols) this._sbNewLine();
-	}
-},
-
-_sbNewLine: function(forced) {
-	var sb=this.scrollBuf;
-	if (this.wrapping && forced) {
-		sb.lines[sb.r][sb.c]=10;
-		sb.lines[sb.r].length=sb.c+1;
-	}
-	sb.r++;
-	sb.c=0;
-	sb.lines[sb.r]=this.getRowArray(this.conf.cols,0);
-	sb.styles[sb.r]=this.getRowArray(this.conf.cols,0);
-},
-
-_sbWrap: function() {
-	// create a temp wrap buffer wb and scan for words/wrap-chars
-	// then re-asign lines & styles to scrollBuf
-	var wb=new Object();
-	wb.lines=new Array();
-	wb.styles=new Array();
-	wb.lines[0]=this.getRowArray(this.conf.cols,0);
-	wb.styles[0]=this.getRowArray(this.conf.cols,0);
-	wb.r=0;
-	wb.c=0;
-	var sb=this.scrollBuf;
-	var sbl=sb.lines;
-	var sbs=sb.styles;
-	var ch, st, wrap, lc, ls;
-	var l=this.c;
-	var lastR=0;
-	var lastC=0;
-	wb.cBreak=false;
-	for (var r=0; r<sbl.length; r++) {
-		lc=sbl[r];
-		ls=sbs[r];
-		for (var c=0; c<lc.length; c++) {
-			ch=lc[c];
-			st=ls[c];
-			if (ch) {
-				var wrap=this.globals.wrapChars[ch];
-				if (ch==10) wrap=1;
-				if (wrap) {
-					if (wrap==2) {
-						l++;
-					}
-					else if (wrap==4) {
-						l++;
-						lc[c]=45;
-					}
-					this._wbOut(wb, lastR, lastC, l);
-					if (ch==10) {
-						this._wbIncLine(wb);
-					}
-					else if (wrap==1 && wb.c<this.maxCols) {
-						wb.lines[wb.r][wb.c]=ch;
-						wb.styles[wb.r][wb.c++]=st;
-						if (wb.c>=this.maxCols) this._wbIncLine(wb);
-					}
-					if (wrap==3) {
-						lastR=r;
-						lastC=c;
-						l=1;
-					}
-					else {
-						l=0;
-						lastR=r;
-						lastC=c+1;
-						if (lastC==lc.length) {
-							lastR++;
-							lastC=0;
-						}
-						if (wrap==4) wb.cBreak=true;
-					}
-				}
-				else {
-					l++;
-				}
-			}
-			else {
-				continue;
-			}
-		}
-	}
-	if (l) {
-		if (wb.cBreak && wb.c!=0) wb.c--;
-		this._wbOut(wb, lastR, lastC, l);
-	}
-	sb.lines=wb.lines;
-	sb.styles=wb.styles;
-	sb.r=wb.r;
-	sb.c=wb.c;
-},
-
-_wbOut: function(wb, br, bc, l) {
-	// copy a word (of l length from br/bc) to wrap buffer wb
-	var sb=this.scrollBuf;
-	var sbl=sb.lines;
-	var sbs=sb.styles;
-	var ofs=0;
-	var lc, ls;
-	if (l+wb.c>this.maxCols) {
-		if (l<this.maxCols) {
-			this._wbIncLine(wb);
-		}
-		else {
-			var i0=0;
-			ofs=this.maxCols-wb.c;
-			lc=sbl[br];
-			ls=sbs[br];
-			while (true) {
-				for (var i=i0; i<ofs; i++) {
-					wb.lines[wb.r][wb.c]=lc[bc];
-					wb.styles[wb.r][wb.c++]=ls[bc++];
-					if (bc==sbl[br].length) {
-						bc=0;
-						br++;
-						lc=sbl[br];
-						ls=sbs[br];
-					}
-				}
-				this._wbIncLine(wb);
-				if (l-ofs<this.maxCols) break;
-				i0=ofs;
-				ofs+=this.maxCols;
-			}
-		}
-	}
-	else if (wb.cBreak) {
-		wb.c--;
-	}
-	lc=sbl[br];
-	ls=sbs[br];
-	for (var i=ofs; i<l; i++) {
-		wb.lines[wb.r][wb.c]=lc[bc];
-		wb.styles[wb.r][wb.c++]=ls[bc++];
-		if (bc==sbl[br].length) {
-			bc=0;
-			br++;
-			lc=sbl[br];
-			ls=sbs[br];
-		}
-	}
-	wb.cBreak=false;
-},
-
-_wbIncLine: function(wb) {
-	// create a new line in temp buffer
-	wb.r++;
-	wb.c=0;
-	wb.lines[wb.r]=this.getRowArray(this.conf.cols,0);
-	wb.styles[wb.r]=this.getRowArray(this.conf.cols,0);
-},
-
-_sbOut: function() {
-	var sb=this.scrollBuf;
-	if (this.wrapping && !sb.status) this._sbWrap();
-	var sbl=sb.lines;
-	var sbs=sb.styles;
-	var tcb=this.charBuf;
-	var tsb=this.styleBuf;
-	var ml=this.maxLines;
-	var buflen=sbl.length;
-	if (sb.more) {
-		if (sb.status) {
-			if (this.inputChar==this.globals.lcMoreKeyAbort) {
-				this.r=ml-1;
-				this.c=0;
-				tcb[this.r]=this.getRowArray(this.conf.cols,0);
-				tsb[this.r]=this.getRowArray(this.conf.cols,0);
-				this.redraw(this.r);
-				this.handler=sb.handler;
-				this.charMode=false;
-				this.inputChar=0;
-				this.scrollBuf=null;
-				this.prompt();
-				return;
-			}
-			else if (this.inputChar==this.globals.lcMoreKeyContinue) {
-				this.clear();
-			}
-			else {
-				return;
-			}
-		}
-		else {
-			if (this.r>=ml-1) this.clear();
-		}
-	}
-	if (this.r+buflen-sb.line<=ml) {
-		for (var i=sb.line; i<buflen; i++) {
-			var r=this.r+i-sb.line;
-			tcb[r]=sbl[i];
-			tsb[r]=sbs[i];
-			this.redraw(r);
-		}
-		this.r+=sb.r-sb.line;
-		this.c=sb.c;
-		if (sb.more) {
-			if (sb.status) this.handler=sb.handler;
-			this.charMode=false;
-			this.inputChar=0;
-			this.scrollBuf=null;
-			this.prompt();
-			return;
-		}
-	}
-	else if (sb.more) {
-		ml--;
-		if (sb.status==0) {
-			sb.handler=this.handler;
-			this.handler=this._sbOut;
-			this.charMode=true;
-			sb.status=1;
-		}
-		if (this.r) {
-			var ofs=ml-this.r;
-			for (var i=sb.line; i<ofs; i++) {
-				var r=this.r+i-sb.line;
-				tcb[r]=sbl[i];
-				tsb[r]=sbs[i];
-				this.redraw(r);
-			}
-		}
-		else {
-			var ofs=sb.line+ml;
-			for (var i=sb.line; i<ofs; i++) {
-				var r=this.r+i-sb.line;
-				tcb[r]=sbl[i];
-				tsb[r]=sbs[i];
-				this.redraw(r);
-			}
-		}
-		sb.line=ofs;
-		this.r=ml;
-		this.c=0;
-		this.type(this.globals.lcMorePrompt1, this.globals.lcMorePromtp1Style);
-		this.type(this.globals.lcMorePrompt2, this.globals.lcMorePrompt2Style);
-		this.lock=false;
-		return;
-	}
-	else if (buflen>=ml) {
-		var ofs=buflen-ml;
-		for (var i=0; i<ml; i++) {
-			var r=ofs+i;
-			tcb[i]=sbl[r];
-			tsb[i]=sbs[r];
-			this.redraw(i);
-		}
-		this.r=ml-1;
-		this.c=sb.c;
-	}
-	else {
-		var dr=ml-buflen;
-		var ofs=this.r-dr;
-		for (var i=0; i<dr; i++) {
-			var r=ofs+i;
-			for (var c=0; c<this.maxCols; c++) {
-				tcb[i][c]=tcb[r][c];
-				tsb[i][c]=tsb[r][c];
-			}
-			this.redraw(i);
-		}
-		for (var i=0; i<buflen; i++) {
-			var r=dr+i;
-			tcb[r]=sbl[i];
-			tsb[r]=sbs[i];
-			this.redraw(r);
-		}
-		this.r=ml-1;
-		this.c=sb.c;
-	}
-	this.scrollBuf=null;
-},
-
-// basic console output
-
-typeAt: function(r,c,text,style) {
-	var tr1=this.r;
-	var tc1=this.c;
-	this.cursorSet(r,c);
-	for (var i=0; i<text.length; i++) {
-		var ch=text.charCodeAt(i);
-		if (!this.isPrintable(ch)) ch=94;
-		this.charBuf[this.r][this.c]=ch;
-		this.styleBuf[this.r][this.c]=(style)? style:0;
-		var last_r=this.r;
-		this._incCol();
-		if (this.r!=last_r) this.redraw(last_r);
-	}
-	this.redraw(this.r);
-	this.r=tr1;
-	this.c=tc1;
-},
-
-statusLine: function(text,style,offset) {
-	var ch,r;
-	style=(style && !isNaN(style))? parseInt(style)&15:0;
-	if (offset && offset>0) {
-		r=this.conf.rows-offset;
-	}
-	else {
-		r=this.conf.rows-1;
-	}
-	for (var i=0; i<this.conf.cols; i++) {
-		if (i<text.length) {
-			ch=text.charCodeAt(i);
-			if (!this.isPrintable(ch)) ch = 94;
-		}
-		else {
-			ch=0;
-		}
-		this.charBuf[r][i]=ch;
-		this.styleBuf[r][i]=style;
-	}
-	this.redraw(r);
-},
-
-printRowFromString: function(r,text,style) {
-	var ch;
-	style=(style && !isNaN(style))? parseInt(style)&15:0;
-	if (r>=0 && r<this.maxLines) {
-		if (typeof text != 'string') text=''+text;
-		for (var i=0; i<this.conf.cols; i++) {
-			if (i<text.length) {
-				ch=text.charCodeAt(i);
-				if (!this.isPrintable(ch)) ch = 94;
-			}
-			else {
-				ch=0;
-			}
-			this.charBuf[r][i]=ch;
-			this.styleBuf[r][i]=style;
-		}
-		this.redraw(r);
-	}
-},
-
-setChar: function(ch,r,c,style) {
-	this.charBuf[r][c]=ch;
-	this.styleBuf[r][c]=(style)? style:0;
-	this.redraw(r);
-},
-
-newLine: function() {
-	this.c=0;
-	this._incRow();
-},
-
-// internal methods for output
-
-_charOut: function(ch, style) {
-	this.charBuf[this.r][this.c]=ch;
-	this.styleBuf[this.r][this.c]=(style)? style:0;
-	this.redraw(this.r);
-	this._incCol();
-},
-
-_incCol: function() {
-	this.c++;
-	if (this.c>=this.maxCols) {
-		this.c=0;
-		this._incRow();
-	}
-},
-
-_incRow: function() {
-	this.r++;
-	if (this.r>=this.maxLines) {
-		this._scrollLines(0,this.maxLines);
-		this.r=this.maxLines-1;
-	}
-},
-
-_scrollLines: function(start, end) {
-	window.status='Scrolling lines ...';
-	start++;
-	for (var ri=start; ri<end; ri++) {
-		var rt=ri-1;
-		this.charBuf[rt]=this.charBuf[ri];
-		this.styleBuf[rt]=this.styleBuf[ri];
-	}
-	// clear last line
-	var rt=end-1;
-	this.charBuf[rt]=this.getRowArray(this.conf.cols,0);
-	this.styleBuf[rt]=this.getRowArray(this.conf.cols,0);
-	this.redraw(rt);
-	for (var r=end-1; r>=start; r--) this.redraw(r-1);
-	window.status='';
-},
-
-// control methods
-
-clear: function() {
-	window.status='Clearing display ...';
-	this.cursorOff();
-	this.insert=false;
-	for (var ri=0; ri<this.maxLines; ri++) {
-		this.charBuf[ri]=this.getRowArray(this.conf.cols,0);
-		this.styleBuf[ri]=this.getRowArray(this.conf.cols,0);
-		this.redraw(ri);
-	}
-	this.r=0;
-	this.c=0;
-	window.status='';
-},
-
-reset: function() {
-	if (this.lock) return;
-	this.lock=true;
-	this.rawMode=false;
-	this.charMode=false;
-	this.maxLines=this.conf.rows;
-	this.maxCols=this.conf.cols;
-	this.lastLine='';
-	this.lineBuffer='';
-	this.inputChar=0;
-	this.clear();
-},
-
-prompt: function() {
-	this.lock=true;
-	if (this.c>0) this.newLine();
-	this.type(this.ps);
-	this._charOut(1);
-	this.lock=false;
-	this.cursorOn();
-},
-
-isPrintable: function(ch, unicodePage1only) {
-	if (this.wrapping && this.globals.wrapChars[ch]==4) return true;
-	if (unicodePage1only && ch>255) {
-		return (ch==this.termKey.EURO && this.printEuro)? true:false;
-	}
-	return (
-		(ch>=32 && ch!=this.termKey.DEL) ||
-		(this.printTab && ch==this.termKey.TAB)
-	);
-},
-
-// cursor methods
-
-cursorSet: function(r,c) {
-	var crsron=this.cursoractive;
-	if (crsron) this.cursorOff();
-	this.r=r%this.maxLines;
-	this.c=c%this.maxCols;
-	this._cursorReset(crsron);
-},
-
-cursorOn: function() {
-	if (this.blinkTimer) clearTimeout(this.blinkTimer);
-	this.blinkBuffer=this.styleBuf[this.r][this.c];
-	this._cursorBlink();
-	this.cursoractive=true;
-},
-
-cursorOff: function() {
-	if (this.blinkTimer) clearTimeout(this.blinkTimer);
-	if (this.cursoractive) {
-		this.styleBuf[this.r][this.c]=this.blinkBuffer;
-		this.redraw(this.r);
-		this.cursoractive=false;
-	}
-},
-
-cursorLeft: function() {
-	var crsron=this.cursoractive;
-	if (crsron) this.cursorOff();
-	var r=this.r;
-	var c=this.c;
-	if (c>0) {
-		c--;
-	}
-	else if (r>0) {
-		c=this.maxCols-1;
-		r--;
-	}
-	if (this.isPrintable(this.charBuf[r][c])) {
-		this.r=r;
-		this.c=c;
-	}
-	this.insert=true;
-	this._cursorReset(crsron);
-},
-
-cursorRight: function() {
-	var crsron=this.cursoractive;
-	if (crsron) this.cursorOff();
-	var r=this.r;
-	var c=this.c;
-	if (c<this.maxCols-1) {
-		c++;
-	}
-	else if (r<this.maxLines-1) {
-		c=0;
-		r++;
-	}
-	if (!this.isPrintable(this.charBuf[r][c])) {
-		this.insert=false;
-	}
-	if (this.isPrintable(this.charBuf[this.r][this.c])) {
-		this.r=r;
-		this.c=c;
-	}
-	this._cursorReset(crsron);
-},
-
-backspace: function() {
-	var crsron=this.cursoractive;
-	if (crsron) this.cursorOff();
-	var r=this.r;
-	var c=this.c;
-	if (c>0) c--
-	else if (r>0) {
-		c=this.maxCols-1;
-		r--;
-	};
-	if (this.isPrintable(this.charBuf[r][c])) {
-		this._scrollLeft(r, c);
-		this.r=r;
-		this.c=c;
-	};
-	this._cursorReset(crsron);
-},
-
-fwdDelete: function() {
-	var crsron=this.cursoractive;
-	if (crsron) this.cursorOff();
-	if (this.isPrintable(this.charBuf[this.r][this.c])) {
-		this._scrollLeft(this.r,this.c);
-		if (!this.isPrintable(this.charBuf[this.r][this.c])) this.insert=false;
-	}
-	this._cursorReset(crsron);
-},
-
-_cursorReset: function(crsron) {
-	if (crsron) {
-		this.cursorOn();
-	}
-	else {
-		this.blinkBuffer=this.styleBuf[this.r][this.c];
-	}
-},
-
-_cursorBlink: function() {
-	if (this.blinkTimer) clearTimeout(this.blinkTimer);
-	if (this == this.globals.activeTerm) {
-		if (this.crsrBlockMode) {
-			this.styleBuf[this.r][this.c]=(this.styleBuf[this.r][this.c]&1)?
-				this.styleBuf[this.r][this.c]&0xfffffe:this.styleBuf[this.r][this.c]|1;
-		}
-		else {
-			this.styleBuf[this.r][this.c]=(this.styleBuf[this.r][this.c]&2)?
-				this.styleBuf[this.r][this.c]&0xffffd:this.styleBuf[this.r][this.c]|2;
-		}
-		this.redraw(this.r);
-	}
-	if (this.crsrBlinkMode) this.blinkTimer=setTimeout('Terminal.prototype.globals.activeTerm._cursorBlink()', this.blinkDelay);
-},
-
-_scrollLeft: function(r,c) {
-	var rows=new Array();
-	rows[0]=r;
-	while (this.isPrintable(this.charBuf[r][c])) {
-		var ri=r;
-		var ci=c+1;
-		if (ci==this.maxCols) {
-			if (ri<this.maxLines-1) {
-				ci=0;
-				ri++;
-				rows[rows.length]=ri;
-			}
-			else {
-				break;
-			}
-		}
-		this.charBuf[r][c]=this.charBuf[ri][ci];
-		this.styleBuf[r][c]=this.styleBuf[ri][ci];
-		c=ci;
-		r=ri;
-	}
-	if (this.charBuf[r][c]!=0) this.charBuf[r][c]=0;
-	for (var i=0; i<rows.length; i++) this.redraw(rows[i]);
-},
-
-_scrollRight: function(r,c) {
-	var rows=new Array();
-	var end=this._getLineEnd(r,c);
-	var ri=end[0];
-	var ci=end[1];
-	if (ci==this.maxCols-1 && ri==this.maxLines-1) {
-		if (r==0) return;
-		this._scrollLines(0,this.maxLines);
-		this.r--;
-		r--;
-		ri--;
-	}
-	rows[r]=1;
-	while (this.isPrintable(this.charBuf[ri][ci])) {
-		var rt=ri;
-		var ct=ci+1;
-		if (ct==this.maxCols) {
-			ct=0;
-			rt++;
-			rows[rt]=1;
-		}
-		this.charBuf[rt][ct]=this.charBuf[ri][ci];
-		this.styleBuf[rt][ct]=this.styleBuf[ri][ci];
-		if (ri==r && ci==c) break;
-		ci--;
-		if (ci<0) {
-			ci=this.maxCols-1;
-			ri--;
-			rows[ri]=1;
-		}
-	}
-	for (var i=r; i<this.maxLines; i++) {
-		if (rows[i]) this.redraw(i);
-	}
-},
-
-_getLineEnd: function(r,c) {
-	if (!this.isPrintable(this.charBuf[r][c])) {
-		c--;
-		if (c<0) {
-			if (r>0) {
-				r--;
-				c=this.maxCols-1;
-			}
-			else {
-				c=0;
-			}
-		}
-	}
-	if (this.isPrintable(this.charBuf[r][c])) {
-		while (true) {
-			var ri=r;
-			var ci=c+1;
-			if (ci==this.maxCols) {
-				if (ri<this.maxLines-1) {
-					ri++;
-					ci=0;
-				}
-				else {
-					break;
-				}
-			}
-			if (!this.isPrintable(this.charBuf[ri][ci])) break;
-			c=ci;
-			r=ri;
-		}
-	}
-	return [r,c];
-},
-
-_getLineStart: function(r,c) {
-	// not used by now, just in case anyone needs this ...
-	var ci, ri;
-	if (!this.isPrintable(this.charBuf[r][c])) {
-		ci=c-1;
-		ri=r;
-		if (ci<0) {
-			if (ri==0) return [0,0];
-			ci=this.maxCols-1;
-			ri--;
-		}
-		if (!this.isPrintable(this.charBuf[ri][ci])) {
-			return [r,c];
-		}
-		else {
-			r=ri;
-			c=ci;
-		}
-	}
-	while (true) {
-		var ri=r;
-		var ci=c-1;
-		if (ci<0) {
-			if (ri==0) break;
-			ci=this.maxCols-1;
-			ri--;
-		}
-		if (!this.isPrintable(this.charBuf[ri][ci])) break;;
-		r=ri;
-		c=ci;
-	}
-	return [r,c];
-},
-
-_getLine: function(adjustCrsrPos) {
-	var end=this._getLineEnd(this.r,this.c);
-	var r=end[0];
-	var c=end[1];
-	if (adjustCrsrPos && (this.r!=r || this.c!=c+1)) {
-		this.r=r;
-		this.c=c+1;
-		if (this.c>=this.maxCols) this.c=this.maxCols-1;
-	}
-	var line=new Array();
-	while (this.isPrintable(this.charBuf[r][c])) {
-		line[line.length]=String.fromCharCode(this.charBuf[r][c]);
-		if (c>0) {
-			c--;
-		}
-		else if (r>0) {
-			c=this.maxCols-1;
-			r--;
-		}
-		else {
-			break;
-		}
-	}
-	line.reverse();
-	return line.join('');
-},
-
-_clearLine: function() {
-	var end=this._getLineEnd(this.r,this.c);
-	var r=end[0];
-	var c=end[1];
-	var line='';
-	while (this.isPrintable(this.charBuf[r][c])) {
-		this.charBuf[r][c]=0;
-		if (c>0) {
-			c--;
-		}
-		else if (r>0) {
-			this.redraw(r);
-			c=this.maxCols-1;
-			r--;
-		}
-		else {
-			break;
-		}
-	}
-	if (r!=end[0]) this.redraw(r);
-	c++;
-	this.cursorSet(r,c);
-	this.insert=false;
-},
-
-// backup/restore screen & state
-
-backupScreen: function() {
-	var backup=this.backupBuffer=new Object();
-	var rl=this.conf.rows;
-	var cl=this.conf.cols;
-	backup.cbuf=new Array(rl);
-	backup.sbuf=new Array(rl);
-	backup.maxCols=this.maxCols;
-	backup.maxLines=this.maxLines;
-	backup.r=this.r;
-	backup.c=this.c;
-	backup.charMode=this.charMode;
-	backup.rawMode=this.rawMode;
-	backup.handler=this.handler;
-	backup.ctrlHandler=this.ctrlHandler;
-	backup.cursoractive=this.cursoractive;
-
-	backup.crsrBlinkMode=this.crsrBlinkMode;
-	backup.crsrBlockMode=this.crsrBlockMode;
-	backup.blinkDelay=this.blinkDelay;
-	backup.DELisBS=this.DELisBS;
-	backup.printTab=this.printTab;
-	backup.printEuro=this.printEuro;
-	backup.catchCtrlH=this.catchCtrlH;
-	backup.closeOnESC=this.closeOnESC;
-	backup.historyUnique=this.historyUnique;
-	backup.ps=this.ps;
-	backup.lineBuffer=this.lineBuffer;
-	backup.inputChar=this.inputChar;
-	backup.lastLine=this.lastLine;
-	backup.historyLength=this.history.length;
-	backup.histPtr=this.histPtr;
-	backup.wrapping=this.wrapping;
-	backup.mapANSI=this.mapANSI;
-	backup.ANSItrueBlack=this.ANSItrueBlack;
-	if (this.cursoractive) this.cursorOff();
-	for (var r=0; r<rl; r++) {
-		var cbr=this.charBuf[r];
-		var sbr=this.styleBuf[r];
-		var tcbr=backup.cbuf[r]=new Array(cl);
-		var tsbr=backup.sbuf[r]=new Array(cl);
-		for (var c=0; c<cl; c++) {
-			tcbr[c]=cbr[c];
-			tsbr[c]=sbr[c];
-		}
-	}
-},
-
-restoreScreen: function() {
-	var backup=this.backupBuffer;
-	if (!backup) return;
-	var rl=this.conf.rows;
-	for (var r=0; r<rl; r++) {
-		this.charBuf[r]=backup.cbuf[r];
-		this.styleBuf[r]=backup.sbuf[r];
-		this.redraw(r);
-	}
-	this.maxCols=backup.maxCols;
-	this.maxLines=backup.maxLines;
-	this.r=backup.r;
-	this.c=backup.c;
-	this.charMode=backup.charMode;
-	this.rawMode=backup.rawMode;
-	this.handler=backup.handler;
-	this.ctrlHandler=backup.ctrlHandler;
-	this.cursoractive=backup.cursoractive;
-	this.crsrBlinkMode=backup.crsrBlinkMode;
-	this.crsrBlockMode=backup.crsrBlockMode;
-	this.blinkDelay=backup.blinkDelay;
-	this.DELisBS=backup.DELisBS;
-	this.printTab=backup.printTab;
-	this.printEuro=backup.printEuro;
-	this.catchCtrlH=backup.catchCtrlH;
-	this.closeOnESC=backup.closeOnESC;
-	this.historyUnique=backup.historyUnique;
-	this.ps=backup.ps;
-	this.lineBuffer=backup.lineBuffer;
-	this.inputChar=backup.inputChar;
-	this.lastLine=backup.lastLine;
-	if (this.history.length>backup.historyLength) {
-		this.history.length=backup.historyLength;
-		this.histPtr=backup.histPtr;
-	}
-	this.wrapping=backup.wrapping;
-	this.mapANSI=backup.mapANSI;
-	this.ANSItrueBlack=backup.ANSItrueBlack;
-	if (this.cursoractive) this.cursorOn();
-	this.backupBuffer=null;
-},
-
-swapBackup: function() {
-	// swap current state and backup buffer (e.g.: toggle do/undo)
-	var backup=this.backupBuffer;
-	this.backupScreen;
-	if (backup) {
-		var backup2=this.backupBuffer;
-		this.backupBuffer=backup;
-		this.restoreScreen();
-		this.backupBuffer=backup2;
-	}
-},
-
-// simple markup escaping
-
-escapeMarkup: function(t) {
-	return t.replace(/%/g, '%%');
-},
-
-// field mode
-
-enterFieldMode: function(start, end, style) {
-	this.cursorOff();
-	if (start===undefined || start<0) start=this.c;
-	if (end=== undefined || end<start || end>this.maxCols) end=this.maxCols;
-	if (!style) style=0;
-	this.fieldStart=start;
-	this.fieldEnd=end;
-	this.fieldStyle=style;
-	this.fieldC=0;
-	this.lastLine='';
-	this.fieldMode=true;
-	this.rawMode=this.charMode=false;
-	if (style&1) {
-		this._crsrWasBlockMode=this.crsrBlockMode;
-		this._crsrWasBlinkMode=this.crsrBlinkMode;
-		this.crsrBlockMode=false;
-		this.crsrBlinkMode=true;
-	}
-	this.drawField();
-	this.lock=false;
-},
-
-exitFieldMode: function() {
-	this.drawField(true);
-	this.fieldMode=false;
-	this.c=this.fieldEnd;
-	if (this.c==this.maxLine) this.newLine();
-	this.lock=true;
-},
-
-drawField: function(isfinal) {
-	this.cursorOff();
-	if (isfinal) this.fieldC=0;
-	var fl=this.fieldEnd-this.fieldStart;
-	if (this.fieldC==this.lastLine.length) fl--;
-	var ofs=this.fieldC-fl;
-	if (ofs<0) ofs=0;
-	var line = (ofs)?  this.lastLine.substring(ofs):this.lastLine;
-	var sb=this.styleBuf[this.r];
-	var cb=this.charBuf[this.r];
-	var max=line.length;
-	for (var i=this.fieldStart, k=0; i<this.fieldEnd; i++, k++) {
-		sb[i]=this.fieldStyle;
-		cb[i]=(k<max)? line.charCodeAt(k):0;
-	}
-	this.redraw(this.r);
-	if (isfinal) {
-		if (this.fieldStyle&1) {
-			this.crsrBlockMode=this._crsrWasBlockMode;
-			this.crsrBlinkMode=this._crsrWasBlinkMode;
-			delete this._crsrWasBlockMode;
-			delete this._crsrWasBlinkMode;
-		}
-	}
-	else {
-		this.c=this.fieldStart+this.fieldC-ofs;
-		this.cursorOn();
-	}
-},
-
-// keyboard focus
-
-focus: function() {
-	this.globals.setFocus(this);
-},
-
-// a inner reference (just for comfort) to be mapped to Terminal.prototype.globals.termKey
-termKey: null,
-
-
-// GUI related methods
-
-_makeTerm: function(rebuild) {
-	window.status='Building terminal ...';
-	var divPrefix=this.termDiv+'_r';
-	if (this.domAPI) {
-		// if applicable we're using createElement
-		this.globals.hasSubDivs=false;
-		var td, row, table, tbody, table2, tbody2, tr, td, node;
-		table=document.createElement('table');
-		table.setAttribute('border', 0);
-		table.setAttribute('cellSpacing', 0);
-		table.setAttribute('cellPadding', this.conf.frameWidth);
-		tbody=document.createElement('tbody');
-		table.appendChild(tbody);
-		row=document.createElement('tr');
-		tbody.appendChild(row);
-		ptd=document.createElement('td');
-		ptd.style.backgroundColor=this.conf.frameColor;
-		row.appendChild(ptd);
-		table2=document.createElement('table');
-		table2.setAttribute('border', 0);
-		table2.setAttribute('cellSpacing', 0);
-		table2.setAttribute('cellPadding', 2);
-		tbody2=document.createElement('tbody');
-		table2.appendChild(tbody2);
-		tr=document.createElement('tr');
-		tbody2.appendChild(tr);
-		td=document.createElement('td');
-		td.style.backgroundColor=this.conf.bgColor;
-		tr.appendChild(td);
-		ptd.appendChild(table2);
-		ptd=td;
-		table2=document.createElement('table');
-		table2.setAttribute('border', 0);
-		table2.setAttribute('cellSpacing', 0);
-		table2.setAttribute('cellPadding', 0);
-		tbody2=document.createElement('tbody');
-		table2.appendChild(tbody2);
-		var rstr='';
-		for (var c=0; c<this.conf.cols; c++) rstr+='&nbsp;';
-		for (var r=0; r<this.conf.rows; r++) {
-			tr=document.createElement('tr');
-			td=document.createElement('td');
-			td.id=divPrefix+r;
-			td.style.height=td.style.minHeight=td.style.maxHeight=this.conf.rowHeight;
-			td.style.whiteSpace='nowrap';
-			td.className=this.conf.fontClass;
-			td.innerHTML=rstr;
-			tr.appendChild(td);
-			tbody2.appendChild(tr);
-		}
-		ptd.appendChild(table2);
-		node=document.getElementById(this.termDiv);
-		while (node.hasChildNodes()) node.removeChild(node.firstChild);
-		node.appendChild(table);
-	}
-	else {
-		// legacy code
-		this.globals.hasSubDivs=(navigator.userAgent.indexOf('Gecko')<0);
-		var s='',
-			bgColorAttribute = (this.conf.bgColor && (this.conf.bgColor!=='none' || this.conf.bgColor!='transparent'))? ' bgcolor="'+this.conf.bgColor+'"':'',
-			frameColorAttribute = (this.conf.frameColor && (this.conf.frameColor!=='none' || this.conf.frameColor!='transparent'))? ' bgcolor="'+this.conf.frameColor+'"':'';
-		s+='<table border="0" cellspacing="0" cellpadding="'+this.conf.frameWidth+'">\n';
-		s+='<tr><td'+frameColorAttribute+'><table border="0" cellspacing="0" cellpadding="2"><tr><td'+bgColorAttribute+'><table border="0" cellspacing="0" cellpadding="0">\n';
-		var rstr='';
-		for (var c=0; c<this.conf.cols; c++) rstr+='&nbsp;';
-		for (var r=0; r<this.conf.rows; r++) {
-			var termid=(this.globals.hasSubDivs)? '' : ' id="'+divPrefix+r+'"';
-			s+='<tr><td nowrap height="'+this.conf.rowHeight+'"'+termid+' class="'+this.conf.fontClass+'">'+rstr+'<\/td><\/tr>\n';
-		}
-		s+='<\/table><\/td><\/tr>\n';
-		s+='<\/table><\/td><\/tr>\n';
-		s+='<\/table>\n';
-		var termOffset=2+this.conf.frameWidth;
-		if (this.globals.hasSubDivs) {
-			for (var r=0; r<this.conf.rows; r++) {
-				s+='<div id="'+divPrefix+r+'" style="position:absolute; top:'+(termOffset+r*this.conf.rowHeight)+'px; left: '+termOffset+'px;" class="'+this.conf.fontClass+'"><\/div>\n';
-			}
-			this.globals.termStringStart='<table border="0" cellspacing="0" cellpadding="0"><tr><td nowrap height="'+this.conf.rowHeight+'" class="'+this.conf.fontClass+'">';
-			this.globals.termStringEnd='<\/td><\/tr><\/table>';
-		}
-		this.globals.writeElement(this.termDiv,s);
-	}
-	if (!rebuild) {
-		this.globals.setElementXY(this.termDiv,this.conf.x,this.conf.y);
-		this.globals.setVisible(this.termDiv,1);
-	}
-	window.status='';
-},
-
-rebuild: function() {
-	// check for bounds and array lengths
-	var rl=this.conf.rows;
-	var cl=this.conf.cols;
-	for (var r=0; r<rl; r++) {
-		var cbr=this.charBuf[r];
-		if (!cbr) {
-			this.charBuf[r]=this.getRowArray(cl,0);
-			this.styleBuf[r]=this.getRowArray(cl,0);
-		}
-		else if (cbr.length<cl) {
-			for (var c=cbr.length; c<cl; c++) {
-				this.charBuf[r][c]=0;
-				this.styleBuf[r][c]=0;
-			}
-		}
-	}
-	var resetcrsr=false;
-	if (this.r>=rl) {
-		r=rl-1;
-		resetcrsr=true;
-	}
-	if (this.c>=cl) {
-		c=cl-1;
-		resetcrsr=true;
-	}
-	if (resetcrsr && this.cursoractive) this.cursorOn();
-	// and actually rebuild
-	this._makeTerm(true);
-	for (var r=0; r<rl; r++) {
-		this.redraw(r);
-	}
-	// clear backup buffer to prevent errors
-	this.backupBuffer=null;
-},
-
-moveTo: function(x,y) {
-	this.globals.setElementXY(this.termDiv,x,y);
-},
-
-resizeTo: function(x,y) {
-	if (this.termDivReady()) {
-		x=parseInt(x,10);
-		y=parseInt(y,10);
-		if (isNaN(x) || isNaN(y) || x<4 || y<2) return false;
-		this.maxCols=this.conf.cols=x;
-		this.maxLines=this.conf.rows=y;
-		this._makeTerm();
-		this.clear();
-		return true;
-	}
-	else {
-		return false;
-	}
-},
-
-redraw: function(r) {
-	var s=this.globals.termStringStart;
-	var curStyle=0;
-	var tstls=this.globals.termStyles;
-	var tscls=this.globals.termStyleClose;
-	var tsopn=this.globals.termStyleOpen;
-	var tspcl=this.globals.termSpecials;
-	var tclrs=this.globals.colorCodes;
-	var tnclrs=this.globals.nsColorCodes;
-	var twclrs=this.globals.webColorCodes;
-	var t_cb=this.charBuf;
-	var t_sb=this.styleBuf;
-	var clr;
-	for (var i=0; i<this.conf.cols; i++) {
-		var c=t_cb[r][i];
-		var cs=t_sb[r][i];
-		if (cs!=curStyle) {
-			if (curStyle) {
-				if (curStyle & 0xffff00) s+='</span>';
-				for (var k=tstls.length-1; k>=0; k--) {
-					var st=tstls[k];
-					if (curStyle & st) s+=tscls[st];
-				}
-			}
-			curStyle=cs;
-			for (var k=0; k<tstls.length; k++) {
-				var st=tstls[k];
-				if (curStyle&st) s+=tsopn[st];
-			}
-			clr='';
-			if (curStyle & 0xff00) {
-				var cc=(curStyle & 0xff00)>>>8;
-				clr= (cc<16)? tclrs[cc] : '#'+tnclrs[cc-16];
-			}
-			else if (curStyle & 0xff0000) {
-				clr='#'+twclrs[(curStyle & 0xff0000)>>>16];
-			}
-			if (clr) {
-				if (curStyle&1) {
-					s+='<span style="background-color:'+clr+' !important;">';
-				}
-				else {
-					s+='<span style="color:'+clr+' !important;">';
-				}
-			}
-		}
-		s+= (tspcl[c])? tspcl[c] : String.fromCharCode(c);
-	}
-	if (curStyle>0) {
-		if (curStyle & 0xffff00) s+='</span>';
-		for (var k=tstls.length-1; k>=0; k--) {
-			var st=tstls[k];
-			if (curStyle&st) s+=tscls[st];
-		}
-	}
-	s+=this.globals.termStringEnd;
-	this.globals.writeElement(this.termDiv+'_r'+r,s);
-},
-
-guiReady: function() {
-	var ready=true;
-	if (this.globals.guiElementsReady(this.termDiv)) {
-		for (var r=0; r<this.conf.rows; r++) {
-			if (this.globals.guiElementsReady(this.termDiv+'_r'+r)==false) {
-				ready=false;
-				break;
-			}
-		}
-	}
-	else {
-		ready=false;
-	}
-	return ready;
-},
-
-termDivReady: function() {
-	if (document.getElementById) {
-		return (document.getElementById(this.termDiv))? true:false;
-	}
-	else if (document.all) {
-		return (document.all[this.termDiv])? true:false;
-	}
-	else {
-		return false;
-	}
-},
-
-getDimensions: function() {
-	var w=0;
-	var h=0;
-	var d=this.termDiv;
-	if (document.getElementById) {
-		var obj=document.getElementById(d);
-		if (obj && obj.firstChild) {
-			w=parseInt(obj.firstChild.offsetWidth,10);
-			h=parseInt(obj.firstChild.offsetHeight,10);
-		}
-		else if (obj && obj.children && obj.children[0]) {
-			w=parseInt(obj.children[0].offsetWidth,10);
-			h=parseInt(obj.children[0].offsetHeight,10);
-		}
-	}
-	else if (document.all) {
-		var obj=document.all[d];
-		if (obj && obj.children && obj.children[0]) {
-			w=parseInt(obj.children[0].offsetWidth,10);
-			h=parseInt(obj.children[0].offsetHeight,10);
-		}
-	}
-	return { width: w, height: h };
-},
-
-
-// global store for static data and methods (former "TermGlobals")
-
-globals: {
-
-	termToInitialze:null,
-	activeTerm:null,
-	kbdEnabled:false,
-	keylock:false,
-	keyRepeatDelay1: 450, // initial delay
-	keyRepeatDelay2: 100, // consecutive delays
-	keyRepeatTimer: null,
-	lcMorePrompt1: ' -- MORE -- ',
-	lcMorePromtp1Style: 1,
-	lcMorePrompt2: ' (Type: space to continue, \'q\' to quit)',
-	lcMorePrompt2Style: 0,
-	lcMoreKeyAbort: 113,
-	lcMoreKeyContinue: 32,
-
-	// initialize global data structs
-
-	_initGlobals: function() {
-		var tg=Terminal.prototype.globals;
-		tg._extendMissingStringMethods();
-		tg._initWebColors();
-		tg._initDomKeyRef();
-		Terminal.prototype.termKey=tg.termKey;
-	},
-
-	// hex support (don't rely on generic support like Number.toString(16))
-
-	getHexChar: function(c) {
-		var tg=Terminal.prototype.globals;
-		if (tg.isHexChar(c)) return tg.hexToNum[c];
-		return -1;
-	},
-
-	isHexChar: function(c) {
-		return ((c>='0' && c<='9') || (c>='a' && c<='f') || (c>='A' && c<='F'))? true:false;
-	},
-
-	isHexOnlyChar: function(c) {
-		return ((c>='a' && c<='f') || (c>='A' && c<='F'))? true:false;
-	},
-
-	hexToNum: {
-		'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-		'8': 8, '9': 9, 'a': 10, 'b': 11, 'c': 12, 'd': 13, 'e': 14, 'f': 15,
-		'A': 10, 'B': 11, 'C': 12, 'D': 13, 'E': 14, 'F': 15
-	},
-
-	// data for color support
-
-	webColors: [],
-	webColorCodes: [''],
-
-	colors: {
-		// ANSI bright (bold) color set
-		black: 1,
-		red: 2,
-		green: 3,
-		yellow: 4,
-		blue: 5,
-		magenta: 6,
-		cyan: 7,
-		white: 8,
-		// dark color set
-		grey: 9,
-		red2: 10,
-		green2: 11,
-		yellow2: 12,
-		blue2: 13,
-		magenta2: 14,
-		cyan2: 15,
-		// synonyms
-		red1: 2,
-		green1: 3,
-		yellow1: 4,
-		blue1: 5,
-		magenta1: 6,
-		cyan1: 7,
-		gray:  9,
-		darkred: 10,
-		darkgreen: 11,
-		darkyellow: 12,
-		darkblue: 13,
-		darkmagenta: 14,
-		darkcyan: 15,
-		// default color
-		'default': 0,
-		clear: 0
-	},
-
-	colorCodes: [
-		'', '#000000', '#ff0000', '#00ff00', '#ffff00', '#0066ff', '#ff00ff', '#00ffff', '#ffffff',
-		'#808080', '#990000', '#009900', '#999900', '#003399', '#990099', '#009999'
-	],
-
-	nsColors: {
-		'aliceblue': 1, 'antiquewhite': 2, 'aqua': 3, 'aquamarine': 4,
-		'azure': 5, 'beige': 6, 'black': 7, 'blue': 8,
-		'blueviolet': 9, 'brown': 10, 'burlywood': 11, 'cadetblue': 12,
-		'chartreuse': 13, 'chocolate': 14, 'coral': 15, 'cornflowerblue': 16,
-		'cornsilk': 17, 'crimson': 18, 'darkblue': 19, 'darkcyan': 20,
-		'darkgoldenrod': 21, 'darkgray': 22, 'darkgreen': 23, 'darkkhaki': 24,
-		'darkmagenta': 25, 'darkolivegreen': 26, 'darkorange': 27, 'darkorchid': 28,
-		'darkred': 29, 'darksalmon': 30, 'darkseagreen': 31, 'darkslateblue': 32,
-		'darkslategray': 33, 'darkturquoise': 34, 'darkviolet': 35, 'deeppink': 36,
-		'deepskyblue': 37, 'dimgray': 38, 'dodgerblue': 39, 'firebrick': 40,
-		'floralwhite': 41, 'forestgreen': 42, 'fuchsia': 43, 'gainsboro': 44,
-		'ghostwhite': 45, 'gold': 46, 'goldenrod': 47, 'gray': 48,
-		'green': 49, 'greenyellow': 50, 'honeydew': 51, 'hotpink': 52,
-		'indianred': 53, 'indigo': 54, 'ivory': 55, 'khaki': 56,
-		'lavender': 57, 'lavenderblush': 58, 'lawngreen': 59, 'lemonchiffon': 60,
-		'lightblue': 61, 'lightcoral': 62, 'lightcyan': 63, 'lightgoldenrodyellow': 64,
-		'lightgreen': 65, 'lightgrey': 66, 'lightpink': 67, 'lightsalmon': 68,
-		'lightseagreen': 69, 'lightskyblue': 70, 'lightslategray': 71, 'lightsteelblue': 72,
-		'lightyellow': 73, 'lime': 74, 'limegreen': 75, 'linen': 76,
-		'maroon': 77, 'mediumaquamarine': 78, 'mediumblue': 79, 'mediumorchid': 80,
-		'mediumpurple': 81, 'mediumseagreen': 82, 'mediumslateblue': 83, 'mediumspringgreen': 84,
-		'mediumturquoise': 85, 'mediumvioletred': 86, 'midnightblue': 87, 'mintcream': 88,
-		'mistyrose': 89, 'moccasin': 90, 'navajowhite': 91, 'navy': 92,
-		'oldlace': 93, 'olive': 94, 'olivedrab': 95, 'orange': 96,
-		'orangered': 97, 'orchid': 98, 'palegoldenrod': 99, 'palegreen': 100,
-		'paleturquoise': 101, 'palevioletred': 102, 'papayawhip': 103, 'peachpuff': 104,
-		'peru': 105, 'pink': 106, 'plum': 107, 'powderblue': 108,
-		'purple': 109, 'red': 110, 'rosybrown': 111, 'royalblue': 112,
-		'saddlebrown': 113, 'salmon': 114, 'sandybrown': 115, 'seagreen': 116,
-		'seashell': 117, 'sienna': 118, 'silver': 119, 'skyblue': 120,
-		'slateblue': 121, 'slategray': 122, 'snow': 123, 'springgreen': 124,
-		'steelblue': 125, 'tan': 126, 'teal': 127, 'thistle': 128,
-		'tomato': 129, 'turquoise': 130, 'violet': 131, 'wheat': 132,
-		'white': 133, 'whitesmoke': 134, 'yellow': 135, 'yellowgreen': 136
-	},
-
-	nsColorCodes: [
-		'',
-		'f0f8ff', 'faebd7', '00ffff', '7fffd4',
-		'f0ffff', 'f5f5dc', '000000', '0000ff',
-		'8a2be2', 'a52a2a', 'deb887', '5f9ea0',
-		'7fff00', 'd2691e', 'ff7f50', '6495ed',
-		'fff8dc', 'dc143c', '00008b', '008b8b',
-		'b8860b', 'a9a9a9', '006400', 'bdb76b',
-		'8b008b', '556b2f', 'ff8c00', '9932cc',
-		'8b0000', 'e9967a', '8fbc8f', '483d8b',
-		'2f4f4f', '00ced1', '9400d3', 'ff1493',
-		'00bfff', '696969', '1e90ff', 'b22222',
-		'fffaf0', '228b22', 'ff00ff', 'dcdcdc',
-		'f8f8ff', 'ffd700', 'daa520', '808080',
-		'008000', 'adff2f', 'f0fff0', 'ff69b4',
-		'cd5c5c', '4b0082', 'fffff0', 'f0e68c',
-		'e6e6fa', 'fff0f5', '7cfc00', 'fffacd',
-		'add8e6', 'f08080', 'e0ffff', 'fafad2',
-		'90ee90', 'd3d3d3', 'ffb6c1', 'ffa07a',
-		'20b2aa', '87cefa', '778899', 'b0c4de',
-		'ffffe0', '00ff00', '32cd32', 'faf0e6',
-		'800000', '66cdaa', '0000cd', 'ba55d3',
-		'9370db', '3cb371', '7b68ee', '00fa9a',
-		'48d1cc', 'c71585', '191970', 'f5fffa',
-		'ffe4e1', 'ffe4b5', 'ffdead', '000080',
-		'fdf5e6', '808000', '6b8e23', 'ffa500',
-		'ff4500', 'da70d6', 'eee8aa', '98fb98',
-		'afeeee', 'db7093', 'ffefd5', 'ffdab9',
-		'cd853f', 'ffc0cb', 'dda0dd', 'b0e0e6',
-		'800080', 'ff0000', 'bc8f8f', '4169e1',
-		'8b4513', 'fa8072', 'f4a460', '2e8b57',
-		'fff5ee', 'a0522d', 'c0c0c0', '87ceeb',
-		'6a5acd', '708090', 'fffafa', '00ff7f',
-		'4682b4', 'd2b48c', '008080', 'd8bfd8',
-		'ff6347', '40e0d0', 'ee82ee', 'f5deb3',
-		'ffffff', 'f5f5f5', 'ffff00', '9acd32'
-	],
-	_webSwatchChars: ['0','3','6','9','c','f'],
-	_initWebColors: function() {
-		// generate long and short web color ref
-		var tg=Terminal.prototype.globals;
-		var ws=tg._webColorSwatch;
-		var wn=tg.webColors;
-		var cc=tg.webColorCodes;
-		var n=1;
-		var a, b, c, al, bl, bs, cl;
-		for (var i=0; i<6; i++) {
-			a=tg._webSwatchChars[i];
-			al=a+a;
-			for (var j=0; j<6; j++) {
-				b=tg._webSwatchChars[j];
-				bl=al+b+b;
-				bs=a+b;
-				for (var k=0; k<6; k++) {
-					c=tg._webSwatchChars[k];
-					cl=bl+c+c;
-					wn[bs+c]=wn[cl]=n;
-					cc[n]=cl;
-					n++;
-				}
-			}
-		}
-	},
-
-	webifyColor: function(s) {
-		// return nearest web color in 3 digit format
-		// (do without RegExp for compatibility)
-		var tg=Terminal.prototype.globals;
-		if (s.length==6) {
-			var c='';
-			for (var i=0; i<6; i+=2) {
-				var a=s.charAt(i);
-				var b=s.charAt(i+1);
-				if (tg.isHexChar(a) && tg.isHexChar(b)) {
-					c+=tg._webSwatchChars[Math.round(parseInt(a+b,16)/255*5)];
-				}
-				else {
-					return '';
-				}
-			}
-			return c;
-		}
-		else if (s.length==3) {
-			var c='';
-			for (var i=0; i<3; i++) {
-				var a=s.charAt(i);
-				if (tg.isHexChar(a)) {
-					c+=tg._webSwatchChars[Math.round(parseInt(a,16)/15*5)];
-				}
-				else {
-					return '';
-				}
-			}
-			return c;
-		}
-		else {
-			return '';
-		}
-	},
-
-	// public methods for color support
-
-	setColor: function(label, value) {
-		var tg=Terminal.prototype.globals;
-		if (typeof label == 'number' && label>=1 && label<=15) {
-			tg.colorCodes[label]=value;
-		}
-		else if (typeof label == 'string') {
-			label=label.toLowerCase();
-			if (label.length==1 && tg.isHexChar(label)) {
-				var n=tg.hexToNum[label];
-				if (n) tg.colorCodes[n]=value;
-			}
-			else if (typeof tg.colors[label] != 'undefined') {
-				var n=tg.colors[label];
-				if (n) tg.colorCodes[n]=value;
-			}
-		}
-	},
-
-	getColorString: function(label) {
-		var tg=Terminal.prototype.globals;
-		if (typeof label == 'number' && label>=0 && label<=15) {
-			return tg.colorCodes[label];
-		}
-		else if (typeof label == 'string') {
-			label=label.toLowerCase();
-			if (label.length==1 && tg.isHexChar(label)) {
-				return tg.colorCodes[tg.hexToNum[label]];
-			}
-			else if (typeof tg.colors[label] != 'undefined') {
-				return tg.colorCodes[tg.colors[label]];
-			}
-		}
-		return '';
-	},
-
-	getColorCode: function(label) {
-		var tg=Terminal.prototype.globals;
-		if (typeof label == 'number' && label>=0 && label<=15) {
-			return label;
-		}
-		else if (typeof label == 'string') {
-			label=label.toLowerCase();
-			if (label.length==1 && tg.isHexChar(label)) {
-				return parseInt(label,16);
-			}
-			else if (typeof tg.colors[label] != 'undefined') {
-				return tg.colors[label];
-			}
-		}
-		return 0;
-	},
-
-	// import/paste methods (methods return success)
-
-	insertText: function(text) {
-		// auto-types a given string to the active terminal
-		// returns success (false indicates a lock or no active terminal)
-		var tg=Terminal.prototype.globals;
-		var termRef = tg.activeTerm;
-		if (!termRef || termRef.closed || tg.keylock || termRef.lock || termRef.charMode || termRef.fieldMode) return false;
-		// terminal open and unlocked, so type the text
-		for (var i=0; i<text.length; i++) {
-			tg.keyHandler({which: text.charCodeAt(i), _remapped:true});
-		}
-		return true;
-	},
-
-	importEachLine: function(text) {
-		// import multiple lines of text per line each and execs
-		// returns success (false indicates a lock or no active terminal)
-		var tg=Terminal.prototype.globals;
-		var termRef = tg.activeTerm;
-		if (!termRef || termRef.closed || tg.keylock || termRef.lock || termRef.charMode || termRef.fieldMode) return false;
-		// clear the current command line
-		termRef.cursorOff();
-		termRef._clearLine();
-		// normalize line breaks
-		text=text.replace(/\r\n?/g, '\n');
-		// split lines and auto-type the text
-		var t=text.split('\n');
-		for (var i=0; i<t.length; i++) {
-			for (var k=0; k<t[i].length; k++) {
-				tg.keyHandler({which: t[i].charCodeAt(k), _remapped:true});
-			}
-			tg.keyHandler({which: term.termKey.CR, _remapped:true});
-		}
-		return true;
-	},
-
-	importMultiLine: function(text) {
-		// importing multi-line text as single input with "\n" in lineBuffer
-		var tg=Terminal.prototype.globals;
-		var termRef = tg.activeTerm;
-		if (!termRef || termRef.closed || tg.keylock || termRef.lock || termRef.charMode || termRef.fieldMode) return false;
-		// lock and clear the line
-		termRef.lock = true;
-		termRef.cursorOff();
-		termRef._clearLine();
-		// normalize linebreaks and echo the text linewise
-		text = text.replace(/\r\n?/g, '\n');
-		var lines = text.split('\n');
-		for (var i=0; i<lines.length; i++) {
-			termRef.type(lines[i]);
-			if (i<lines.length-1) termRef.newLine();
-		}
-		// fake <ENTER>;
-		// (no history entry for this)
-		termRef.lineBuffer = text;
-		termRef.lastLine = '';
-		termRef.inputChar = 0;
-		termRef.handler();
-		return true;
-	},
-
-	// text related service functions
-
-	normalize: function(n,m) {
-		var s=''+n;
-		while (s.length<m) s='0'+s;
-		return s;
-	},
-
-	fillLeft: function(t,n) {
-		if (typeof t != 'string') t=''+t;
-		while (t.length<n) t=' '+t;
-		return t;
-	},
-
-	center: function(t,l) {
-		var s='';
-		for (var i=t.length; i<l; i+=2) s+=' ';
-		return s+t;
-	},
-
-	// simple substitute for String.replace()
-	stringReplace: function(s1,s2,t) {
-		var l1=s1.length;
-		var l2=s2.length;
-		var ofs=t.indexOf(s1);
-		while (ofs>=0) {
-			t=t.substring(0,ofs)+s2+t.substring(ofs+l1);
-			ofs=t.indexOf(s1,ofs+l2);
-		}
-		return t;
-	},
-
-
-	// config data for text wrap
-
-	wrapChars: {
-		// keys: charCode
-		// values: 1 = white space, 2 = wrap after, 3 = wrap before, 4 = conditional word break
-		9:   1, // tab
-		10:  1, // new line - don't change this (used internally)!!!
-		12:  4, // form feed (use this for conditional word breaks)
-		13:  1, // cr
-		32:  1, // blank
-		40:  3, // (
-		45:  2, // dash/hyphen
-		61:  2, // =
-		91:  3, // [
-		94:  3, // caret (non-printing chars)
-		123: 3  // {
-	},
-
-
-	// keyboard methods & controls
-
-	setFocus: function(termref) {
-		Terminal.prototype.globals.activeTerm=termref;
-		Terminal.prototype.globals.clearRepeatTimer();
-	},
-
-	termKey: {
-		// codes of special keys
-		'NUL': 0x00,
-		'SOH': 0x01,
-		'STX': 0x02,
-		'ETX': 0x03,
-		'EOT': 0x04,
-		'ENQ': 0x05,
-		'ACK': 0x06,
-		'BEL': 0x07,
-		'BS': 0x08,
-		'BACKSPACE': 0x08,
-		'HT': 0x09,
-		'TAB': 0x09,
-		'LF': 0x0A,
-		'VT': 0x0B,
-		'FF': 0x0C,
-		'CR': 0x0D,
-		'SO': 0x0E,
-		'SI': 0x0F,
-		'DLE': 0x10,
-		'DC1': 0x11,
-		'DC2': 0x12,
-		'DC3': 0x13,
-		'DC4': 0x14,
-		'NAK': 0x15,
-		'SYN': 0x16,
-		'ETB': 0x17,
-		'CAN': 0x18,
-		'EM': 0x19,
-		'SUB': 0x1A,
-		'ESC': 0x1B,
-		'IS4': 0x1C,
-		'IS3': 0x1D,
-		'IS2': 0x1E,
-		'IS1': 0x1F,
-		'DEL': 0x7F,
-		// other specials
-		'EURO': 0x20AC,
-		// cursor mapping
-		'LEFT': 0x1C,
-		'RIGHT': 0x1D,
-		'UP': 0x1E,
-		'DOWN': 0x1F
-	},
-
-	// map some DOM_VK_* properties to values defined in termKey
-	termDomKeyRef: {},
-	_domKeyMappingData: {
-		'LEFT': 'LEFT',
-		'RIGHT': 'RIGHT',
-		'UP': 'UP',
-		'DOWN': 'DOWN',
-		'BACK_SPACE': 'BS',
-		'RETURN': 'CR',
-		'ENTER': 'CR',
-		'ESCAPE': 'ESC',
-		'DELETE': 'DEL',
-		'TAB': 'TAB'
-	},
-	_initDomKeyRef: function() {
-		var tg=Terminal.prototype.globals;
-		var m=tg._domKeyMappingData;
-		var r=tg.termDomKeyRef;
-		var k=tg.termKey;
-		for (var i in m) r['DOM_VK_'+i]=k[m[i]];
-	},
-
-	registerEvent: function(obj, eventType, handler, capture) {
-		if (obj.addEventListener) {
-			obj.addEventListener(eventType.toLowerCase(), handler, capture);
-		}
-		/*
-		else if (obj.attachEvent) {
-			obj.attachEvent('on'+eventType.toLowerCase(), handler);
-		}
-		*/
-		else {
-			var et=eventType.toUpperCase();
-			if (window.Event && window.Event[et] && obj.captureEvents) obj.captureEvents(Event[et]);
-			obj['on'+eventType.toLowerCase()]=handler;
-		}
-	},
-	releaseEvent: function(obj, eventType, handler, capture) {
-		if (obj.removeEventListener) {
-			obj.removeEventListener(eventType.toLowerCase(), handler, capture);
-		}
-		/*
-		else if (obj.detachEvent) {
-			obj.detachEvent('on'+eventType.toLowerCase(), handler);
-		}
-		*/
-		else {
-			var et=eventType.toUpperCase();
-			if (window.Event && window.Event[et] && obj.releaseEvents) obj.releaseEvents(Event[et]);
-			et='on'+eventType.toLowerCase();
-			if (obj[et] && obj[et]==handler) obj.et=null;
-		}
-	},
-
-	enableKeyboard: function(term) {
-		var tg=Terminal.prototype.globals;
-		if (!tg.kbdEnabled) {
-			tg.registerEvent(document, 'keypress', tg.keyHandler, true);
-			tg.registerEvent(document, 'keydown', tg.keyFix, true);
-			tg.registerEvent(document, 'keyup', tg.clearRepeatTimer, true);
-			tg.kbdEnabled=true;
-		}
-		tg.activeTerm=term;
-	},
-
-	disableKeyboard: function(term) {
-		var tg=Terminal.prototype.globals;
-		if (tg.kbdEnabled) {
-			tg.releaseEvent(document, 'keypress', tg.keyHandler, true);
-			tg.releaseEvent(document, 'keydown', tg.keyFix, true);
-			tg.releaseEvent(document, 'keyup', tg.clearRepeatTimer, true);
-			tg.kbdEnabled=false;
-		}
-		tg.activeTerm=null;
-	},
-
-	// remap some special key mappings on keydown
-
-	keyFix: function(e) {
-		var tg=Terminal.prototype.globals;
-		var term=tg.activeTerm;
-		var ch;
-		if (tg.keylock || term.lock) return true;
-		if (window.event) {
-			if  (!e) e=window.event;
-			ch=e.keyCode;
-			if (e.DOM_VK_UP) {
-				for (var i in tg.termDomKeyRef) {
-					if (e[i] && ch == e[i]) {
-						tg.keyHandler({which:tg.termDomKeyRef[i],_remapped:true,_repeat:(ch==0x1B)? true:false});
-						if (e.preventDefault) e.preventDefault();
-						if (e.stopPropagation) e.stopPropagation();
-						e.cancelBubble=true;
-						return false;
-					}
-				}
-				e.cancelBubble=false;
-				return true;
-			}
-			else {
-				// no DOM support
-				var termKey=term.termKey;
-				var keyHandler=tg.keyHandler;
-				if (ch==8 && !term.isOpera) { keyHandler({which:termKey.BS,_remapped:true,_repeat:true}); }
-				else if (ch==9) { keyHandler({which:termKey.TAB,_remapped:true,_repeat: (term.printTab)? false:true}); }
-				else if (ch==27) { keyHandler({which:termKey.ESC,_remapped:true,_repeat: (term.printTab)? false:true}); }
-				else if (ch==37) { keyHandler({which:termKey.LEFT,_remapped:true,_repeat:true}); }
-				else if (ch==39) { keyHandler({which:termKey.RIGHT,_remapped:true,_repeat:true}); }
-				else if (ch==38) { keyHandler({which:termKey.UP,_remapped:true,_repeat:true}); }
-				else if (ch==40) { keyHandler({which:termKey.DOWN,_remapped:true,_repeat:true}); }
-				else if (ch==127 || ch==46) { keyHandler({which:termKey.DEL,_remapped:true,_repeat:true}); }
-				else if (ch>=57373 && ch<=57376) {
-					if (ch==57373) { keyHandler({which:termKey.UP,_remapped:true,_repeat:true}); }
-					else if (ch==57374) { keyHandler({which:termKey.DOWN,_remapped:true,_repeat:true}); }
-					else if (ch==57375) { keyHandler({which:termKey.LEFT,_remapped:true,_repeat:true}); }
-					else if (ch==57376) { keyHandler({which:termKey.RIGHT,_remapped:true,_repeat:true}); }
-				}
-				else {
-					e.cancelBubble=false;
-					return true;
-				}
-				if (e.preventDefault) e.preventDefault();
-				if (e.stopPropagation) e.stopPropagation();
-				e.cancelBubble=true;
-				return false;
-			}
-		}
-	},
-
-	clearRepeatTimer: function(e) {
-		var tg=Terminal.prototype.globals;
-		if (tg.keyRepeatTimer) {
-			clearTimeout(tg.keyRepeatTimer);
-			tg.keyRepeatTimer=null;
-		}
-	},
-
-	doKeyRepeat: function(ch) {
-		Terminal.prototype.globals.keyHandler({which:ch,_remapped:true,_repeated:true})
-	},
-
-	keyHandler: function(e) {
-		var tg=Terminal.prototype.globals;
-		var term=tg.activeTerm;
-		if (tg.keylock || term.lock || term.isMac && e && e.metaKey) return true;
-		if (window.event) {
-			if (window.event.preventDefault) window.event.preventDefault();
-			if (window.event.stopPropagation) window.event.stopPropagation();
-		}
-		else if (e) {
-			if (e.preventDefault) e.preventDefault();
-			if (e.stopPropagation) e.stopPropagation();
-		}
-		var ch;
-		var ctrl=false;
-		var shft=false;
-		var remapped=false;
-		var termKey=term.termKey;
-		var keyRepeat=0;
-		if (e) {
-			ch=e.which;
-			ctrl=((e.ctrlKey && !e.altKey) || e.modifiers==2);
-			shft=(e.shiftKey || e.modifiers==4);
-			if (e._remapped) {
-				remapped=true;
-				if (window.event) {
-					//ctrl=(ctrl || window.event.ctrlKey);
-					ctrl=(ctrl || (window.event.ctrlKey && !window.event.altKey));
-					shft=(shft || window.event.shiftKey);
-				}
-			}
-			if (e._repeated) {
-				keyRepeat=2;
-			}
-			else if (e._repeat) {
-				keyRepeat=1;
-			}
-		}
-		else if (window.event) {
-			ch=window.event.keyCode;
-			//ctrl=(window.event.ctrlKey);
-			ctrl=(window.event.ctrlKey && !window.event.altKey); // allow alt gr == ctrl alt
-			shft=(window.event.shiftKey);
-			if (window.event._repeated) {
-				keyRepeat=2;
-			}
-			else if (window.event._repeat) {
-				keyRepeat=1;
-			}
-		}
-		else {
-			return true;
-		}
-		if (ch=='' && remapped==false) {
-			// map specials
-			if (e==null) e=window.event;
-			if (e.charCode==0 && e.keyCode) {
-				if (e.DOM_VK_UP) {
-					var dkr=tg.termDomKeyRef;
-					for (var i in dkr) {
-						if (e[i] && e.keyCode == e[i]) {
-							ch=dkr[i];
-							break;
-						}
-					}
-				}
-				else {
-					// NS4
-					if (e.keyCode==28) { ch=termKey.LEFT; }
-					else if (e.keyCode==29) { ch=termKey.RIGHT; }
-					else if (e.keyCode==30) { ch=termKey.UP; }
-					else if (e.keyCode==31) { ch=termKey.DOWN; }
-					// Mozilla alike but no DOM support
-					else if (e.keyCode==37) { ch=termKey.LEFT; }
-					else if (e.keyCode==39) { ch=termKey.RIGHT; }
-					else if (e.keyCode==38) { ch=termKey.UP; }
-					else if (e.keyCode==40) { ch=termKey.DOWN; }
-					// just to have the TAB mapping here too
-					else if (e.keyCode==9) { ch=termKey.TAB; }
-				}
-			}
-		}
-		// leave on unicode private use area (might be function key etc)
-		if ((ch>=0xE000) && (ch<= 0xF8FF)) return;
-		if (keyRepeat) {
-			tg.clearRepeatTimer();
-			tg.keyRepeatTimer = window.setTimeout(
-				'Terminal.prototype.globals.doKeyRepeat('+ch+')',
-				(keyRepeat==1)? tg.keyRepeatDelay1:tg.keyRepeatDelay2
-			);
-		}
-		// key actions
-		if (term.charMode) {
-			if (ctrl && term.isPrintable(ch,true))
-				ch = String.fromCharCode(ch).toUpperCase().charCodeAt(0) & ~0x40;
-			term.insert=false;
-			term.inputChar=ch;
-			term.lineBuffer='';
-			term.handler();
-			if (ch<=32 && window.event) window.event.cancelBubble=true;
-			return false;
-		}
-		if (!ctrl) {
-			// special keys
-			if (ch==termKey.CR) {
-				term.lock=true;
-				term.cursorOff();
-				term.insert=false;
-				if (term.rawMode) {
-					term.lineBuffer=term.lastLine;
-				}
-				else if (term.fieldMode) {
-					term.lineBuffer=term.lastLine;
-					term.exitFieldMode();
-				}
-				else {
-					term.lineBuffer=term._getLine(true);
-					if (
-						term.lineBuffer!='' &&
-						(!term.historyUnique || term.history.length==0 ||
-						term.lineBuffer!=term.history[term.history.length-1])
-					   ) {
-						term.history[term.history.length]=term.lineBuffer;
-					}
-					term.histPtr=term.history.length;
-				}
-				term.lastLine='';
-				term.inputChar=0;
-				term.handler();
-				if (window.event) window.event.cancelBubble=true;
-				return false;
-			}
-			else if (term.fieldMode) {
-				if (ch==termKey.ESC) {
-					term.lineBuffer=term.lastLine='';
-					term.exitFieldMode();
-					term.lastLine='';
-					term.inputChar=0;
-					term.handler();
-					if (window.event) window.event.cancelBubble=true;
-					return false;
-				}
-				else if (ch==termKey.LEFT) {
-					if (term.fieldC>0) term.fieldC--;
-				}
-				else if (ch==termKey.RIGHT) {
-					if (term.fieldC<term.lastLine.length) term.fieldC++;
-				}
-				else if (ch==termKey.BS) {
-					if (term.fieldC>0) {
-						term.lastLine=term.lastLine.substring(0,term.fieldC-1)+term.lastLine.substring(term.fieldC);
-						term.fieldC--;
-					}
-				}
-				else if (ch==termKey.DEL) {
-					if (term.fieldC<term.lastLine.length) {
-						term.lastLine=term.lastLine.substring(0,term.fieldC)+term.lastLine.substring(term.fieldC+1);
-					}
-				}
-				else if (ch>=32) {
-					term.lastLine=term.lastLine.substring(0,term.fieldC)+String.fromCharCode(ch)+term.lastLine.substring(term.fieldC);
-					term.fieldC++;
-				}
-				term.drawField();
-				return false;
-			}
-			else if (ch==termKey.ESC && term.conf.closeOnESC) {
-				term.close();
-				if (window.event) window.event.cancelBubble=true;
-				return false;
-			}
-			if (ch<32 && term.rawMode) {
-				if (window.event) window.event.cancelBubble=true;
-				return false;
-			}
-			else {
-				if (ch==termKey.LEFT) {
-					term.cursorLeft();
-					if (window.event) window.event.cancelBubble=true;
-					return false;
-				}
-				else if (ch==termKey.RIGHT) {
-					term.cursorRight();
-					if (window.event) window.event.cancelBubble=true;
-					return false;
-				}
-				else if (ch==termKey.UP) {
-					term.cursorOff();
-					if (term.histPtr==term.history.length) term.lastLine=term._getLine();
-					term._clearLine();
-					if (term.history.length && term.histPtr>=0) {
-						if (term.histPtr>0) term.histPtr--;
-						term.type(term.history[term.histPtr]);
-					}
-					else if (term.lastLine) {
-						term.type(term.lastLine);
-					}
-					term.cursorOn();
-					if (window.event) window.event.cancelBubble=true;
-					return false;
-				}
-				else if (ch==termKey.DOWN) {
-					term.cursorOff();
-					if (term.histPtr==term.history.length) term.lastLine=term._getLine();
-					term._clearLine();
-					if (term.history.length && term.histPtr<=term.history.length) {
-						if (term.histPtr<term.history.length) term.histPtr++;
-						if (term.histPtr<term.history.length) {
-							term.type(term.history[term.histPtr]);
-						}
-						else if (term.lastLine) {
-							term.type(term.lastLine);
-						}
-					}
-					else if (term.lastLine) {
-						term.type(term.lastLine);
-					}
-					term.cursorOn();
-					if (window.event) window.event.cancelBubble=true;
-					return false;
-				}
-				else if (ch==termKey.BS) {
-					term.backspace();
-					if (window.event) window.event.cancelBubble=true;
-					return false;
-				}
-				else if (ch==termKey.DEL) {
-					if (term.DELisBS) {
-						term.backspace();
-					}
-					else {
-						term.fwdDelete();
-					}
-					if (window.event) window.event.cancelBubble=true;
-					return false;
-				}
-			}
-		}
-		if (term.rawMode) {
-			if (term.isPrintable(ch)) {
-				term.lastLine+=String.fromCharCode(ch);
-			}
-			if (ch==32 && window.event) {
-				window.event.cancelBubble=true;
-			}
-			else if (window.opera && window.event) {
-				window.event.cancelBubble=true;
-			}
-			return false;
-		}
-		else {
-			if (term.conf.catchCtrlH && (ch==termKey.BS || (ctrl && ch==72))) {
-				// catch ^H
-				term.backspace();
-				if (window.event) window.event.cancelBubble=true;
-				return false;
-			}
-			else if (term.ctrlHandler && (ch<32 || (ctrl && term.isPrintable(ch,true)))) {
-				if ((ch>=65 && ch<=96) || ch==63) {
-					// remap canonical
-					if (ch==63) {
-						ch=31;
-					}
-					else {
-						ch-=64;
-					}
-				}
-				term.inputChar=ch;
-				term.ctrlHandler();
-				if (window.event) window.event.cancelBubble=true;
-				return false;
-			}
-			else if (ctrl || !term.isPrintable(ch,true)) {
-				if (window.event) window.event.cancelBubble=true;
-				return false;
-			}
-			else if (term.isPrintable(ch,true)) {
-				if (term.blinkTimer) clearTimeout(term.blinkTimer);
-				if (term.insert) {
-					term.cursorOff();
-					term._scrollRight(term.r,term.c);
-				}
-				term._charOut(ch);
-				term.cursorOn();
-				if (ch==32 && window.event) {
-					window.event.cancelBubble=true;
-				}
-				else if (window.opera && window.event) {
-					window.event.cancelBubble=true;
-				}
-				return false;
-			}
-		}
-		return true;
-	},
-
-
-	// gui mappings
-
-	hasSubDivs: false,
-	termStringStart: '',
-	termStringEnd: '',
-
-	termSpecials: {
-		// special HTML escapes
-		0: '&nbsp;',
-		1: '&nbsp;',
-		9: '&nbsp;',
-		32: '&nbsp;',
-		34: '&quot;',
-		38: '&amp;',
-		60: '&lt;',
-		62: '&gt;',
-		127: '&loz;',
-		0x20AC: '&euro;'
-	},
-
-	// extensive list of max 8 styles (2^n, n<16)
-	termStyles: [1,2,4,8, 16],
-	// style markup: one letter keys, reserved keys: "p" (plain), "c" (color)
-	termStyleMarkup: {
-		'r': 1,
-		'u': 2,
-		'i': 4,
-		's': 8,
-		'b': 16 // map "b" to 16 (italics) for ANSI mapping
-	},
-	// mappings for styles (heading HTML)
-	termStyleOpen: {
-		1: '<span class="termReverse">',
-		2: '<u>',
-		4: '<i>',
-		8: '<strike>',
-		16: '<i>'
-	},
-	// mapping for styles (trailing HTML)
-	termStyleClose: {
-		1: '<\/span>',
-		2: '<\/u>',
-		4: '<\/i>',
-		8: '<\/strike>',
-		16: '</i>'
-	},
-
-	// method to install custom styles
-	assignStyle: function(styleCode, markup, htmlOpen, htmlClose) {
-		var tg=Terminal.prototype.globals;
-		// check params
-		if (!styleCode || isNaN(styleCode)) {
-			if (styleCode>=256) {
-				alert('termlib.js:\nCould not assign style.\n'+s+' is not a valid power of 2 between 0 and 256.');
-				return;
-			}
-		}
-		var s=styleCode&0xff;
-		var matched=false;
-		for (var i=0; i<8; i++) {
-			if ((s>>>i)&1) {
-				if (matched) {
-					alert('termlib.js:\nCould not assign style code.\n'+s+' is not a power of 2!');
-					return;
-				}
-				matched=true;
-			}
-		}
-		if (!matched) {
-			alert('termlib.js:\nCould not assign style code.\n'+s+' is not a valid power of 2 between 0 and 256.');
-			return;
-		}
-		markup=String(markup).toLowerCase();
-		if (markup=='c' || markup=='p') {
-			alert('termlib.js:\nCould not assign mark up.\n"'+markup+'" is a reserved code.');
-			return;
-		}
-		if (markup.length>1) {
-			alert('termlib.js:\nCould not assign mark up.\n"'+markup+'" is not a single letter code.');
-			return;
-		}
-		var exists=false;
-		for (var i=0; i<tg.termStyles.length; i++) {
-			if (tg.termStyles[i]==s) {
-				exists=true;
-				break;
-			}
-		}
-		if (exists) {
-			var m=tg.termStyleMarkup[markup];
-			if (m && m!=s) {
-				alert('termlib.js:\nCould not assign mark up.\n"'+markup+'" is already in use.');
-				return;
-			}
-		}
-		else {
-			if (tg.termStyleMarkup[markup]) {
-				alert('termlib.js:\nCould not assign mark up.\n"'+markup+'" is already in use.');
-				return;
-			}
-			tg.termStyles[tg.termStyles.length]=s;
-		}
-		// install properties
-		tg.termStyleMarkup[markup]=s;
-		tg.termStyleOpen[s]=htmlOpen;
-		tg.termStyleClose[s]=htmlClose;
-	},
-
-	// ANSI output mapping (styles & fg colors only)
-
-	ANSI_regexp: /(\x1b\[|x9b)([0-9;]+?)([a-zA-Z])/g, // CSI ( = 0x1b+"[" or 0x9b ) + params + letter
-	ANIS_SGR_codes: {
-		'0': '%+p',
-		'1': '%+b',
-		'3': '%+i',
-		'4': '%+u',
-		'7': '%+r',
-		'9': '%+s',
-		'21': '%+u',
-		'22': '%-b',
-		'23': '%-i',
-		'24': '%-u',
-		'27': '%-r',
-		'29': '%-s',
-		'30': '%c(0)', // using default fg color for black (black: "%c(1)")
-		'31': '%c(a)',
-		'32': '%c(b)',
-		'33': '%c(c)',
-		'34': '%c(d)',
-		'35': '%c(e)',
-		'36': '%c(f)',
-		'37': '%c(#999)',
-		'39': '%c(0)',
-		'90': '%c(9)',
-		'91': '%c(2)',
-		'92': '%c(3)',
-		'93': '%c(4)',
-		'94': '%c(5)',
-		'95': '%c(6)',
-		'96': '%c(7)',
-		'97': '%c(8)',
-		'99': '%c(0)',
-		'trueBlack': '%c(1)'
-	},
-
-	ANSI_map: function(t, trueBlack) {
-		// transform simple ANSI SGR codes to internal markup
-		var tg=Terminal.prototype.globals;
-		tg.ANSI_regexp.lastIndex=0;
-		return t.replace(
-			tg.ANSI_regexp,
-			function (str, p1, p2, p3, offset, s) {
-				return tg.ANSI_replace(p2, p3, trueBlack);
-			}
-		);
-	},
-
-	ANSI_replace: function(p, cmd, trueBlack) {
-		var tg=Terminal.prototype.globals;
-		if (cmd=='m') {
-			if (p=='') {
-				return tg.ANIS_SGR_codes[0];
-			}
-			else if (trueBlack && p=='30') {
-				return tg.ANIS_SGR_codes.trueBlack;
-			}
-			else if (tg.ANIS_SGR_codes[p]) {
-				return tg.ANIS_SGR_codes[p];
-			}
-		}
-		return '';
-	},
-
-
-	// basic DHTML dynamics and browser abstraction
-
-	writeElement: function(e,t) {
-		if (document.getElementById) {
-			var obj=document.getElementById(e);
-			obj.innerHTML=t;
-		}
-		else if (document.all) {
-			document.all[e].innerHTML=t;
-		}
-	},
-
-	setElementXY: function(d,x,y) {
-		if (document.getElementById) {
-			var obj=document.getElementById(d);
-			obj.style.left=x+'px';
-			obj.style.top=y+'px';
-		}
-		else if (document.all) {
-			document.all[d].style.left=x+'px';
-			document.all[d].style.top=y+'px';
-		}
-	},
-
-	setVisible: function(d,v) {
-		if (document.getElementById) {
-			var obj=document.getElementById(d);
-			obj.style.visibility= (v)? 'visible':'hidden';
-		}
-		else if (document.all) {
-			document.all[d].style.visibility= (v)? 'visible':'hidden';
-		}
-	},
-
-	setDisplay: function(d,v) {
-		if (document.getElementById) {
-			var obj=document.getElementById(d);
-			obj.style.display=v;
-		}
-		else if (document.all) {
-			document.all[d].style.display=v;
-		}
-	},
-
-	guiElementsReady: function(e) {
-		if (document.getElementById) {
-			return (document.getElementById(e))? true:false;
-		}
-		else if (document.all) {
-			return (document.all[e])? true:false;
-		}
-		else {
-			return false;
-		}
-	},
-
-
-	// constructor mods (MSIE fixes)
-
-	_termString_makeKeyref: function() {
-		var tg=Terminal.prototype.globals;
-		var termString_keyref= tg.termString_keyref= new Array();
-		var termString_keycoderef= tg.termString_keycoderef= new Array();
-		var hex= new Array('A','B','C','D','E','F');
-		for (var i=0; i<=15; i++) {
-			var high=(i<10)? i:hex[i-10];
-			for (var k=0; k<=15; k++) {
-				var low=(k<10)? k:hex[k-10];
-				var cc=i*16+k;
-				if (cc>=32) {
-					var cs=unescape("%"+high+low);
-					termString_keyref[cc]=cs;
-					termString_keycoderef[cs]=cc;
-				}
-			}
-		}
-	},
-
-	_extendMissingStringMethods: function() {
-		if (!String.fromCharCode || !String.prototype.charCodeAt) {
-			Terminal.prototype.globals._termString_makeKeyref();
-		}
-		if (!String.fromCharCode) {
-			String.fromCharCode=function(cc) {
-				return (cc!=null)? Terminal.prototype.globals.termString_keyref[cc] : '';
-			};
-		}
-		if (!String.prototype.charCodeAt) {
-			String.prototype.charCodeAt=function(n) {
-				cs=this.charAt(n);
-				return (Terminal.prototype.globals.termString_keycoderef[cs])?
-					Terminal.prototype.globals.termString_keycoderef[cs] : 0;
-			};
-		}
-	}
-
-	// end of Terminal.prototype.globals
-}
-
-// end of Terminal.prototype
-}
-
-// initialize global data
-Terminal.prototype.globals._initGlobals();
-
-// global entities for backward compatibility with termlib 1.x applications
-var TerminalDefaults = Terminal.prototype.Defaults;
-var termDefaultHandler = Terminal.prototype.defaultHandler;
-var TermGlobals = Terminal.prototype.globals;
-var termKey = Terminal.prototype.globals.termKey;
-var termDomKeyRef = Terminal.prototype.globals.termDomKeyRef;
-
-
-/*
-  === termlib.js Socket Extension v.1.02 ===
-
-  (c) Norbert Landsteiner 2003-2007
-  mass:werk - media environments
-  <http://www.masswerk.at>
-
-# Synopsis:
-  Integrates async XMLHttpRequests (AJAX/JSON) tightly into termlib.js
-
-# Example:
-
-  myTerm = new Terminal( { handler: myTermHandler } );
-  myTerm.open();
-
-  function myTermHandler() {
-    this.newLine();
-    if (this.lineBuffer == 'get file') {
-       myTerm.send(
-         {
-           url: 'myservice',
-           data: {
-               book: 'theBook',
-               chapter: 7,
-               page: 45
-             },
-           callback: myCallback
-          }
-       );
-       return;
-    }
-    else {
-       // ...
-    }
-    this.prompt();
-  }
-
-  function myCallback() {
-  	if (this.socket.success) {
-  		this.write(this.socket.responseText);
-  	}
-  	else {
-  		this.write('OOPS: ' + this.socket.status + ' ' + this.socket.statusText);
-  		if (this.socket.errno) {
-  			this.newLine();
-  			this.write('Error: ' + this.socket.errstring);
-  		}
-  	}
-  	this.prompt();
-  }
-
-
-# Documentation:
-
-  for usage and description see readme.txt chapter 13:
-  <http://www.masswerk.at/termlib/readme.txt>
-
-  or refer to the sample page:
-  <http://www.masswerk.at/termlib/sample_socket.html>
-
-*/
-
-Terminal.prototype._HttpSocket = function() {
-	var req=null;
-	if (window.XMLHttpRequest) {
-		try {
-			req=new XMLHttpRequest();
-		}
-		catch(e) {}
-	}
-	else if (window.ActiveXObject) {
-		var prtcls=this._msXMLHttpObjects;
-		for (var i=0; i<prtcls.length; i++) {
-			try {
-				req=new ActiveXObject(prtcls[i]);
-				if (req) {
-					// shorten proto list to working element
-					if (prtcls.length>1) this.prototype._msXMLHttpObjects= [ prtcls[i] ];
-					break;
-				}
-			}
-			catch(e) {}
-		}
-	}
-	this.request=req;
-	this.url;
-	this.data=null;
-	this.query='';
-	this.timeoutTimer=null;
-	this.localMode=Boolean(window.location.href.search(/^file:/i)==0);
-	this.error=0;
-}
-
-Terminal.prototype._HttpSocket.prototype = {
-	version: '1.02',
-	// config
-	useXMLEncoding: false, // use ";" as separator if true, "&" else
-	defaulTimeout: 10000,  // request timeout in ticks (milliseconds)
-	defaultMethod: 'GET',
-	forceNewline: true,    // translate line-breaks in responseText to newlines
-
-	// static const
-	errno: {
-		OK: 0,
-		NOTIMPLEMENTED: 1,
-		FATALERROR: 2,
-		TIMEOUT: 3,
-		NETWORKERROR: 4,
-		LOCALFILEERROR: 5
-	},
-	errstring: [
-		'',
-		'XMLHttpRequest not implemented.',
-		'Could not open XMLHttpRequest.',
-		'The connection timed out.',
-		'Network error.',
-		'The requested local document was not found.'
-	],
-
-	// private static data
-	_msXMLHttpObjects: [
-		'Msxml2.XMLHTTP',
-		'Microsoft.XMLHTTP',
-		'Msxml2.XMLHTTP.5.0',
-		'Msxml2.XMLHTTP.4.0',
-		'Msxml2.XMLHTTP.3.0'
-	],
-
-	// internal methods
-	serializeData: function() {
-		this.query=this.serialize(this.data);
-	},
-	serialize: function(data) {
-		var v='';
-		if( data != null ) {
-			switch (typeof data) {
-				case 'object':
-					var d=[];
-					if (data instanceof Array) {
-						// array
-						for (var i=0; i<data.length; i++) {
-							d.push(this.serialize(data[i]));
-						}
-						v= d.join(',');
-						break;
-					}
-					for (var i in data) {
-						switch (typeof data[i]) {
-							case 'object':
-								d.push(encodeURIComponent(i)+'='+this.serialize(data[i]));
-								break;
-							default:
-								d.push(encodeURIComponent(i)+'='+encodeURIComponent(data[i]));
-								break;
-						}
-					}
-					v= (this.useXMLEncoding)? d.join(';') : d.join('&');
-					break;
-				case 'number':
-					v=String(data);
-					break;
-				case 'string':
-					v=encodeURIComponent(data);
-					break;
-				case 'boolean':
-					v=(data)? '1':'0';
-					break;
-			}
-		}
-		return v;
-	},
-	toCamelCase: function(s) {
-		if (typeof s!='string') s=String(s);
-		var a=s.toLowerCase().split('-');
-		var cc=a[0];
-		for (var i=1; i<a.length; i++) {
-			p=a[i];
-			if (p.length) cc+=p.charAt(0).toUpperCase()+p.substring(1);
-		}
-		return cc;
-	},
-	callbackHandler: function() {
-		if (this.termRef.closed) return;
-		var r=this.request;
-		if (this.error==0 && r.readyState!=4) return;
-		if (this.timeoutTimer) {
-			clearTimeout (this.timeoutTimer);
-			this.timeoutTimer = null;
-		}
-		var success=false;
-		var failed=true;
-		var response={
-			headers: {},
-			ErrorCodes: this.errno
-		};
-		if (this.localMode) {
-			if (this.error && this.error<this.errno.NETWORKERROR) {
-				response.status=0;
-				response.statusText='Connection Error';
-				response.responseText='';
-				response.responseXML=null;
-			}
-			else if (this.error || r.responseText==null) {
-				failed=false;
-				response.status=404;
-				response.statusText='Not Found';
-				response.responseText='The document '+this.url+' was not found on this file system.';
-				response.responseXML=null;
-				this.error=this.errno.LOCALFILEERROR;
-			}
-			else {
-				success=true;
-				failed=false;
-				response.status=200;
-				response.statusText='OK';
-				response.responseText=r.responseText;
-				response.responseXML=r.responseXML;
-			}
-		}
-		else {
-			try {
-				if (!this.error) {
-					if (typeof r == 'object' && r.status != undefined)  {
-						failed=false;
-						if (r.status >= 200 && r.status < 300) {
-							success=true;
-						}
-						else if (r.status >= 12000) {
-							// MSIE network error
-							failed=true;
-							this.error=this.errno.NETWORKERROR;
-						}
-					}
-				}
-			}
-			catch(e) {}
-			if (!failed) {
-				response.status=r.status;
-				response.statusText= (r.status==404)? 'Not Found':r.statusText; // force correct header
-				response.responseText=r.responseText;
-				response.responseXML=r.responseXML;
-				if (this.getHeaders) {
-					if (this.getHeaders instanceof Array) {
-						for (var i=0; i<this.getHeaders.length; i++) {
-							var h=this.getHeaders[i];
-							try {
-								response.headers[this.toCamelCase(h)]=r.getResponseHeader(h);
-							}
-							catch(e) {}
-						}
-					}
-					else {
-						for (var h in this.getHeaders) {
-							try {
-								response.headers[this.toCamelCase(h)]=r.getResponseHeader(h);
-							}
-							catch(e) {}
-						}
-					}
-				}
-			}
-			else {
-				response.status=0;
-				response.statusText='Connection Error';
-				response.responseText='';
-				response.responseXML=null;
-			}
-		}
-		if (this.forceNewline) response.responseText=response.responseText.replace(/\r\n?/g, '\n');
-		response.url=this.url;
-		response.data=this.data;
-		response.query=this.query;
-		response.method=this.method;
-		response.success=success;
-		response.errno=this.error;
-		response.errstring=this.errstring[this.error];
-		var term=this.termRef;
-		term.socket=response;
-		if (this.callback) {
-			if (typeof this.callback=='function') {
-				this.callback.apply(term);
-			}
-			else if (window[this.callback] && typeof window[this.callback]=='function') {
-				window[this.callback].apply(term);
-			}
-			else {
-				term._defaultServerCallback();
-			}
-		}
-		else {
-			term._defaultServerCallback();
-		}
-		delete term.socket;
-		this.request=null;
-		this.callback=null;
-	},
-	timeoutHandler: function() {
-		this.error = this.errno.TIMEOUT;
-		try {
-			this.request.abort();
-		}
-		catch(e) {}
-		if (!this.localMode) this.callbackHandler();
-	}
-}
-
-Terminal.prototype.send = function( opts ) {
-	var soc = new this._HttpSocket();
-	if (opts) {
-		if (typeof opts.method == 'string') {
-			switch (opts.method.toLowerCase()) {
-				case 'post':
-					soc.method='POST'; break;
-				case 'get':
-					soc.method='GET'; break;
-				default:
-					soc.method=soc.defaultMethod.toUpperCase();
-			}
-		}
-		else {
-			soc.method=soc.defaultMethod;
-		}
-		if (opts.postbody != undefined) {
-			soc.method='POST';
-			soc.query=opts.postbody;
-			soc.data=opts.data;
-		}
-		else if (opts.data != undefined) {
-			soc.data=opts.data;
-			soc.serializeData();
-		}
-		if (opts.url) soc.url=opts.url;
-		if (opts.getHeaders && typeof opts.getHeaders=='object') {
-			soc.getHeaders=opts.getHeaders;
-		}
-	}
-	else {
-		opts = {}
-		soc.method=soc.defaultMethod;
-	}
-	var uri=soc.url;
-	if (soc.method=='GET') {
-		if (soc.query) {
-			uri+= (uri.indexOf('?')<0)?
-				'?'+soc.query :
-				(soc.useXMLEncoding)? ';'+soc.query : '&'+soc.query;
-		}
-		if (!soc.localMode) {
-			// add a random value to the query string (force a request)
-			var uniqueparam= '_termlib_reqid=' +new Date().getTime()+'_'+Math.floor(Math.random()*100000);
-			uri+= (uri.indexOf('?')<0)?
-				'?'+uniqueparam :
-				(soc.useXMLEncoding)? ';'+uniqueparam : '&'+uniqueparam;
-		}
-	}
-	soc.callback=opts.callback;
-	soc.termRef=this;
-	if (!soc.request) {
-		soc.error = soc.errno.NOTIMPLEMENTED;
-		soc.callbackHandler();
-		return;
-	}
-	else {
-		try {
-			if (opts.userid!=undefined) {
-				if (opts.password!=undefined) {
-					soc.request.open(soc.method, uri, true, opts.userid, opts.password);
-				}
-				else {
-					soc.request.open(soc.method, uri, true, opts.userid);
-				}
-			}
-			else {
-				soc.request.open(soc.method, uri, true);
-			}
-		}
-		catch(e) {
-			soc.error = soc.errno.FATALERROR;
-			soc.callbackHandler();
-			return;
-		}
-		var body=null;
-		if (soc.method == 'POST') {
-			try {
-				soc.request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-			}
-			catch(e) {}
-			body=soc.query;
-		}
-		if (opts.headers && typeof opts.headers == 'objects') {
-			for (var i in opts.headers) {
-				try {
-					soc.request.setRequestHeader(i, opts.headers[i]);
-				}
-				catch(e) {}
-			}
-		}
-		if (opts.mimetype && soc.request.overrideMimeType) {
-			try {
-				soc.request.overrideMimeType(opts.mimetype);
-				// force "Connection: close" (Bugzilla #246651)
-				soc.request.setRequestHeader('Connection', 'close');
-			}
-			catch(e) {}
-		}
-
-		var timeoutDelay=(opts.timeout && typeof opts.timeout=='number')? opts.tiomeout : soc.defaulTimeout;
-
-		soc.request.onreadystatechange=function() { soc.callbackHandler(); };
-		try {
-			soc.request.send(body);
-		}
-		catch(e) {
-			if (soc.localMode) {
-				soc.request.onreadystatechange=null;
-				soc.request.abort();
-				soc.error = soc.errno.LOCALFILEERROR;
-			}
-			else {
-				soc.request.onreadystatechange=null;
-				try {
-					soc.request.abort();
-				}
-				catch(e2) {}
-				soc.error = soc.errno.NETWORKERROR;
-			}
-			soc.callbackHandler();
-			return true;
-		}
-		soc.timeoutTimer = setTimeout(function() { soc.timeoutHandler() }, timeoutDelay);
-	}
-}
-Terminal.prototype._defaultServerCallback = function() {
-	if (this.socket.success) {
-		// output im more-mode
-		this.write('Server Response:%n'+this.socket.responseText, true);
-	}
-	else {
-		var s='Request failed: '+this.socket.status+' '+this.socket.statusText;
-		if (this.socket.errno) s+='%n'+this.socket.errstring;
-		this.write(s);
-		this.prompt();
-	}
-}
-
-
-// eof// end include: /home/david/dev/ws/emsdk/upstream/emscripten/cache/sysroot/lib/termlib.js
 
 
 // Sometimes an existing Module object exists with properties
@@ -3626,7 +265,7 @@ assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at bui
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-var wasmBinary;
+var wasmBinary; 
 if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];legacyModuleProp('wasmBinary', 'wasmBinary');
 
 if (typeof WebAssembly != 'object') {
@@ -3804,7 +443,7 @@ function initRuntime() {
 
   checkStackCookie();
 
-
+  
 if (!Module['noFSInit'] && !FS.init.initialized)
   FS.init();
 FS.ignorePermissions = false;
@@ -3816,7 +455,7 @@ PIPEFS.root = FS.mount(PIPEFS, {}, null);
 
 function preMain() {
   checkStackCookie();
-
+  
   callRuntimeCallbacks(__ATMAIN__);
 }
 
@@ -4124,10 +763,10 @@ function createWasm() {
 
     wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 
-
+    
 
     wasmMemory = wasmExports['memory'];
-
+    
     assert(wasmMemory, 'memory not found in wasm exports');
     updateMemoryViews();
 
@@ -4281,24 +920,24 @@ function dbg(...args) {
 // === Body ===
 
 var ASM_CONSTS = {
-  2384448: ($0, $1) => { term.cursorSet($0, $1); },
- 2384476: ($0, $1, $2, $3) => { term.setChar($0, $1, $2, $3); },
- 2384510: () => { return term.crsrBlinkMode ? 0 : term.crsrBlockMode ? 1 : 2; },
- 2384574: () => { return term.conf.rows; },
- 2384601: () => { return term.conf.cols; },
- 2384628: () => { return term.inputChar; },
- 2384655: () => { var c = term.inputChar; term.inputChar = 0; return c; },
- 2384713: () => { term.inputChar = 0 },
- 2384732: () => { term.close() },
- 2384745: () => { term = new Terminal({ termDiv: 'termDiv', handler: function() {}, x: 0, y: 0, initHandler: function() { term.charMode = true; term.lock = false; term.cursorOn(); } }); term.open(); },
- 2384926: ($0, $1) => { term.resizeTo($0, $1); },
- 2384953: ($0) => { term.handler = function() { Runtime.dynCall('v', $0); }; term.orig_resizeTo = term.orig_resizeTo || term.resizeTo; term.resizeTo = function(x,y) { var r = this.orig_resizeTo(x,y); if (r) Runtime.dynCall('v', $0); return r; }; },
- 2385183: () => { throw 'SimulateInfiniteLoop' },
- 2385212: ($0, $1) => { term.resizeTo($0, $1); },
- 2385239: ($0) => { return stringToNewUTF8(TermGlobals.getColorString($0)); },
- 2385299: ($0, $1) => { TermGlobals.setColor($0, $1); },
- 2385333: () => { term.cursorOn() },
- 2385349: () => { term.cursorOff() }
+  6087808: ($0, $1) => { term.cursorSet($0, $1); },  
+ 6087836: ($0, $1, $2, $3) => { term.setChar($0, $1, $2, $3); },  
+ 6087870: () => { return term.crsrBlinkMode ? 0 : term.crsrBlockMode ? 1 : 2; },  
+ 6087934: () => { return term.conf.rows; },  
+ 6087961: () => { return term.conf.cols; },  
+ 6087988: () => { return term.inputChar; },  
+ 6088015: () => { var c = term.inputChar; term.inputChar = 0; return c; },  
+ 6088073: () => { term.inputChar = 0 },  
+ 6088092: () => { term.close() },  
+ 6088105: () => { term = new Terminal({ termDiv: 'termDiv', handler: function() {}, x: 0, y: 0, initHandler: function() { term.charMode = true; term.lock = false; term.cursorOn(); } }); term.open(); },  
+ 6088286: ($0, $1) => { term.resizeTo($0, $1); },  
+ 6088313: ($0) => { term.handler = function() { Runtime.dynCall('v', $0); }; term.orig_resizeTo = term.orig_resizeTo || term.resizeTo; term.resizeTo = function(x,y) { var r = this.orig_resizeTo(x,y); if (r) Runtime.dynCall('v', $0); return r; }; },  
+ 6088543: () => { throw 'SimulateInfiniteLoop' },  
+ 6088572: ($0, $1) => { term.resizeTo($0, $1); },  
+ 6088599: ($0) => { return stringToNewUTF8(TermGlobals.getColorString($0)); },  
+ 6088659: ($0, $1) => { TermGlobals.setColor($0, UTF8ToString($1)); },  
+ 6088707: () => { term.cursorOn() },  
+ 6088723: () => { term.cursorOff() }
 };
 
 // end include: preamble.js
@@ -4318,7 +957,7 @@ var ASM_CONSTS = {
       }
     };
 
-
+  
     /**
      * @param {number} ptr
      * @param {string} type
@@ -4347,7 +986,7 @@ var ASM_CONSTS = {
       return '0x' + ptr.toString(16).padStart(8, '0');
     };
 
-
+  
     /**
      * @param {number} ptr
      * @param {number} value
@@ -4398,8 +1037,8 @@ var ASM_CONSTS = {
       }
       quit_(1, e);
     };
-
-
+  
+  
   var runtimeKeepaliveCounter = 0;
   var keepRuntimeAlive = () => noExitRuntime || runtimeKeepaliveCounter > 0;
   var _proc_exit = (code) => {
@@ -4410,25 +1049,25 @@ var ASM_CONSTS = {
       }
       quit_(code, new ExitStatus(code));
     };
-
+  
   /** @suppress {duplicate } */
   /** @param {boolean|number=} implicit */
   var exitJS = (status, implicit) => {
       EXITSTATUS = status;
-
+  
       checkUnflushedContent();
-
+  
       // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
       if (keepRuntimeAlive() && !implicit) {
         var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
         err(msg);
       }
-
+  
       _proc_exit(status);
     };
   var _exit = exitJS;
-
-
+  
+  
   var maybeExit = () => {
       if (!keepRuntimeAlive()) {
         try {
@@ -4452,13 +1091,13 @@ var ASM_CONSTS = {
     };
   /** @param {number=} timeout */
   var safeSetTimeout = (func, timeout) => {
-
+      
       return setTimeout(() => {
-
+        
         callUserCallback(func);
       }, timeout);
     };
-
+  
   var PATH = {
   isAbs:(path) => path.charAt(0) === '/',
   splitPath:(filename) => {
@@ -4527,18 +1166,18 @@ var ASM_CONSTS = {
   join:(...paths) => PATH.normalize(paths.join('/')),
   join2:(l, r) => PATH.normalize(l + '/' + r),
   };
-
+  
   var _emscripten_set_main_loop_timing = (mode, value) => {
       Browser.mainLoop.timingMode = mode;
       Browser.mainLoop.timingValue = value;
-
+  
       if (!Browser.mainLoop.func) {
         err('emscripten_set_main_loop_timing: Cannot set timing mode for main loop since a main loop does not exist! Call emscripten_set_main_loop first to set one up.');
         return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
       }
-
+  
       if (!Browser.mainLoop.running) {
-
+        
         Browser.mainLoop.running = true;
       }
       if (mode == 0) {
@@ -4587,15 +1226,15 @@ var ASM_CONSTS = {
       }
       return 0;
     };
-
+  
   var _emscripten_get_now;
       // Modern environment where performance.now() is supported:
       // N.B. a shorter form "_emscripten_get_now = performance.now;" is
       // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
       _emscripten_get_now = () => performance.now();
   ;
-
-
+  
+  
     /**
      * @param {number=} arg
      * @param {boolean=} noSetTiming
@@ -4604,7 +1243,7 @@ var ASM_CONSTS = {
       assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
       Browser.mainLoop.func = browserIterationFunc;
       Browser.mainLoop.arg = arg;
-
+  
       // Closure compiler bug(?): Closure does not see that the assignment
       //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
       // is a value copy of a number (even with the JSDoc @type annotation)
@@ -4617,12 +1256,12 @@ var ASM_CONSTS = {
       var thisMainLoopId = (() => Browser.mainLoop.currentlyRunningMainloop)();
       function checkIsRunning() {
         if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
-
+          
           return false;
         }
         return true;
       }
-
+  
       // We create the loop runner here but it is not actually running until
       // _emscripten_set_main_loop_timing is called (which might happen a
       // later time).  This member signifies that the current runner has not
@@ -4647,17 +1286,17 @@ var ASM_CONSTS = {
             }
           }
           Browser.mainLoop.updateStatus();
-
+  
           // catches pause/resume main loop from blocker execution
           if (!checkIsRunning()) return;
-
+  
           setTimeout(Browser.mainLoop.runner, 0);
           return;
         }
-
+  
         // catch pauses from non-main loop sources
         if (!checkIsRunning()) return;
-
+  
         // Implement very basic swap interval control
         Browser.mainLoop.currentFrameNumber = Browser.mainLoop.currentFrameNumber + 1 | 0;
         if (Browser.mainLoop.timingMode == 1 && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
@@ -4667,31 +1306,31 @@ var ASM_CONSTS = {
         } else if (Browser.mainLoop.timingMode == 0) {
           Browser.mainLoop.tickStartTime = _emscripten_get_now();
         }
-
+  
         // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
         // VBO double-buffering and reduce GPU stalls.
-
+  
         if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
           warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
           Browser.mainLoop.method = ''; // just warn once per call to set main loop
         }
-
+  
         Browser.mainLoop.runIter(browserIterationFunc);
-
+  
         checkStackCookie();
-
+  
         // catch pauses from the main loop itself
         if (!checkIsRunning()) return;
-
+  
         // Queue new audio data. This is important to be right after the main loop invocation, so that we will immediately be able
         // to queue the newest produced audio samples.
         // TODO: Consider adding pre- and post- rAF callbacks so that GL.newRenderingFrameStarted() and SDL.audio.queueNewAudioData()
         //       do not need to be hardcoded into this function, but can be more generic.
         if (typeof SDL == 'object') SDL.audio?.queueNewAudioData?.();
-
+  
         Browser.mainLoop.scheduler();
       }
-
+  
       if (!noSetTiming) {
         if (fps && fps > 0) {
           _emscripten_set_main_loop_timing(0, 1000.0 / fps);
@@ -4699,21 +1338,21 @@ var ASM_CONSTS = {
           // Do rAF by rendering each frame (no decimating)
           _emscripten_set_main_loop_timing(1, 1);
         }
-
+  
         Browser.mainLoop.scheduler();
       }
-
+  
       if (simulateInfiniteLoop) {
         throw 'unwind';
       }
     };
-
-
-
-
-
+  
+  
+  
+  
+  
   var preloadPlugins = Module['preloadPlugins'] || [];
-
+  
   var Browser = {
   mainLoop:{
   running:false,
@@ -4777,7 +1416,7 @@ var ASM_CONSTS = {
   init() {
         if (Browser.initted) return;
         Browser.initted = true;
-
+  
         // Support for plugins that can process preloaded files. You can add more of these to
         // your app by creating and appending to preloadPlugins.
         //
@@ -4785,7 +1424,7 @@ var ASM_CONSTS = {
         // it is given the file's raw data. When it is done, it calls a callback with the file's
         // (possibly modified) data. For example, a plugin might decompress a file, or it
         // might create some side data structure for use later (like an Image element, etc.).
-
+  
         var imagePlugin = {};
         imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
           return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
@@ -4817,7 +1456,7 @@ var ASM_CONSTS = {
           img.src = url;
         };
         preloadPlugins.push(imagePlugin);
-
+  
         var audioPlugin = {};
         audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
           return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
@@ -4878,9 +1517,9 @@ var ASM_CONSTS = {
           }, 10000);
         };
         preloadPlugins.push(audioPlugin);
-
+  
         // Canvas event setup
-
+  
         function pointerLockChange() {
           Browser.pointerLock = document['pointerLockElement'] === Module['canvas'] ||
                                 document['mozPointerLockElement'] === Module['canvas'] ||
@@ -4891,7 +1530,7 @@ var ASM_CONSTS = {
         if (canvas) {
           // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
           // Module['forcedAspectRatio'] = 4 / 3;
-
+  
           canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                       canvas['mozRequestPointerLock'] ||
                                       canvas['webkitRequestPointerLock'] ||
@@ -4903,12 +1542,12 @@ var ASM_CONSTS = {
                                    document['msExitPointerLock'] ||
                                    (() => {}); // no-op if function does not exist
           canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
-
+  
           document.addEventListener('pointerlockchange', pointerLockChange, false);
           document.addEventListener('mozpointerlockchange', pointerLockChange, false);
           document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
           document.addEventListener('mspointerlockchange', pointerLockChange, false);
-
+  
           if (Module['elementPointerLock']) {
             canvas.addEventListener("click", (ev) => {
               if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
@@ -4921,7 +1560,7 @@ var ASM_CONSTS = {
       },
   createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
         if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
-
+  
         var ctx;
         var contextHandle;
         if (useWebGL) {
@@ -4931,13 +1570,13 @@ var ASM_CONSTS = {
             alpha: false,
             majorVersion: 1,
           };
-
+  
           if (webGLContextAttributes) {
             for (var attribute in webGLContextAttributes) {
               contextAttributes[attribute] = webGLContextAttributes[attribute];
             }
           }
-
+  
           // This check of existence of GL is here to satisfy Closure compiler, which yells if variable GL is referenced below but GL object is not
           // actually compiled in because application is not doing any GL operations. TODO: Ideally if GL is not being used, this function
           // Browser.createContext() should not even be emitted.
@@ -4950,9 +1589,9 @@ var ASM_CONSTS = {
         } else {
           ctx = canvas.getContext('2d');
         }
-
+  
         if (!ctx) return null;
-
+  
         if (setInModule) {
           if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
           Module.ctx = ctx;
@@ -4972,7 +1611,7 @@ var ASM_CONSTS = {
         Browser.resizeCanvas = resizeCanvas;
         if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
         if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
-
+  
         var canvas = Module['canvas'];
         function fullscreenChange() {
           Browser.isFullscreen = false;
@@ -4992,7 +1631,7 @@ var ASM_CONSTS = {
             // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
             canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
             canvasContainer.parentNode.removeChild(canvasContainer);
-
+  
             if (Browser.resizeCanvas) {
               Browser.setWindowedCanvasSize();
             } else {
@@ -5002,7 +1641,7 @@ var ASM_CONSTS = {
           Module['onFullScreen']?.(Browser.isFullscreen);
           Module['onFullscreen']?.(Browser.isFullscreen);
         }
-
+  
         if (!Browser.fullscreenHandlersInstalled) {
           Browser.fullscreenHandlersInstalled = true;
           document.addEventListener('fullscreenchange', fullscreenChange, false);
@@ -5010,19 +1649,19 @@ var ASM_CONSTS = {
           document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
           document.addEventListener('MSFullscreenChange', fullscreenChange, false);
         }
-
+  
         // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
         var canvasContainer = document.createElement("div");
         canvas.parentNode.insertBefore(canvasContainer, canvas);
         canvasContainer.appendChild(canvas);
-
+  
         // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
         canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
                                             canvasContainer['mozRequestFullScreen'] ||
                                             canvasContainer['msRequestFullscreen'] ||
                                            (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
                                            (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
-
+  
         canvasContainer.requestFullscreen();
       },
   requestFullScreen() {
@@ -5035,7 +1674,7 @@ var ASM_CONSTS = {
         if (!Browser.isFullscreen) {
           return false;
         }
-
+  
         var CFS = document['exitFullscreen'] ||
                   document['cancelFullScreen'] ||
                   document['mozCancelFullScreen'] ||
@@ -5074,9 +1713,9 @@ var ASM_CONSTS = {
         return safeSetTimeout(func, timeout);
       },
   safeRequestAnimationFrame(func) {
-
+        
         return Browser.requestAnimationFrame(() => {
-
+          
           callUserCallback(func);
         });
       },
@@ -5157,7 +1796,7 @@ var ASM_CONSTS = {
         var rect = Module["canvas"].getBoundingClientRect();
         var cw = Module["canvas"].width;
         var ch = Module["canvas"].height;
-
+  
         // Neither .scrollX or .pageXOffset are defined in a spec, but
         // we prefer .scrollX because it is currently in a spec draft.
         // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
@@ -5168,13 +1807,13 @@ var ASM_CONSTS = {
         assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
         var adjustedX = pageX - (scrollX + rect.left);
         var adjustedY = pageY - (scrollY + rect.top);
-
+  
         // the canvas might be CSS-scaled compared to its backbuffer;
         // SDL-using content will want mouse coordinates in terms
         // of backbuffer units.
         adjustedX = adjustedX * (cw / rect.width);
         adjustedY = adjustedY * (ch / rect.height);
-
+  
         return { x: adjustedX, y: adjustedY };
       },
   setMouseCoords(pageX, pageY) {
@@ -5196,7 +1835,7 @@ var ASM_CONSTS = {
             Browser.mouseMovementX = Browser.getMovementX(event);
             Browser.mouseMovementY = Browser.getMovementY(event);
           }
-
+  
           // add the mouse delta to the current absolute mouse position
           Browser.mouseX += Browser.mouseMovementX;
           Browser.mouseY += Browser.mouseMovementY;
@@ -5205,10 +1844,10 @@ var ASM_CONSTS = {
             var touch = event.touch;
             if (touch === undefined) {
               return; // the "touch" property is only defined in SDL
-
+  
             }
             var coords = Browser.calculateMouseCoords(touch.pageX, touch.pageY);
-
+  
             if (event.type === 'touchstart') {
               Browser.lastTouches[touch.identifier] = coords;
               Browser.touches[touch.identifier] = coords;
@@ -5220,7 +1859,7 @@ var ASM_CONSTS = {
             }
             return;
           }
-
+  
           Browser.setMouseCoords(event.pageX, event.pageY);
         }
       },
@@ -5302,28 +1941,28 @@ var ASM_CONSTS = {
         }
       },
   };
-
+  
   var _SDL_GetTicks = () => (Date.now() - SDL.startTime)|0;
-
+  
   var _SDL_LockSurface = (surf) => {
       var surfData = SDL.surfaces[surf];
-
+  
       surfData.locked++;
       if (surfData.locked > 1) return 0;
-
+  
       if (!surfData.buffer) {
         surfData.buffer = _malloc(surfData.width * surfData.height * 4);
         HEAPU32[(((surf)+(20))>>2)] = surfData.buffer;
       }
-
+  
       // Mark in C/C++-accessible SDL structure
       // SDL_Surface has the following fields: Uint32 flags, SDL_PixelFormat *format; int w, h; Uint16 pitch; void *pixels; ...
       // So we have fields all of the same size, and 5 of them before us.
       // TODO: Use macros like in library.js
       HEAPU32[(((surf)+(20))>>2)] = surfData.buffer;
-
+  
       if (surf == SDL.screen && Module.screenIsReadOnly && surfData.image) return 0;
-
+  
       if (SDL.defaults.discardOnLock) {
         if (!surfData.image) {
           surfData.image = surfData.ctx.createImageData(surfData.width, surfData.height);
@@ -5332,7 +1971,7 @@ var ASM_CONSTS = {
       } else {
         surfData.image = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
       }
-
+  
       // Emulate desktop behavior and kill alpha values on the locked surface. (very costly!) Set SDL.defaults.opaqueFrontBuffer = false
       // if you don't want this.
       if (surf == SDL.screen && SDL.defaults.opaqueFrontBuffer) {
@@ -5342,7 +1981,7 @@ var ASM_CONSTS = {
           data[i*4+3] = 255; // opacity, as canvases blend alpha
         }
       }
-
+  
       if (SDL.defaults.copyOnLock && !SDL.defaults.discardOnLock) {
         // Copy pixel data to somewhere accessible to 'C/C++'
         if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
@@ -5368,10 +2007,10 @@ var ASM_CONSTS = {
           HEAPU8.set(surfData.image.data, surfData.buffer);
         }
       }
-
+  
       return 0;
     };
-
+  
   var lengthBytesUTF8 = (str) => {
       var len = 0;
       for (var i = 0; i < str.length; ++i) {
@@ -5392,14 +2031,14 @@ var ASM_CONSTS = {
       }
       return len;
     };
-
+  
   var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
       assert(typeof str === 'string', `stringToUTF8Array expects a string (got ${typeof str})`);
       // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
       // undefined and false each don't write out any bytes.
       if (!(maxBytesToWrite > 0))
         return 0;
-
+  
       var startIdx = outIdx;
       var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
       for (var i = 0; i < str.length; ++i) {
@@ -5448,9 +2087,9 @@ var ASM_CONSTS = {
     if (dontAddNull) u8array.length = numBytesWritten;
     return u8array;
   }
-
-
-
+  
+  
+  
   var SDL = {
   defaults:{
   width:320,
@@ -5684,7 +2323,7 @@ var ASM_CONSTS = {
         var leftY = Math.max(first.y, second.y);
         var rightX = Math.min(first.x + first.w, second.x + second.w);
         var rightY = Math.min(first.y + first.h, second.y + second.h);
-
+  
         return {
           x: leftX,
           y: leftY,
@@ -5716,19 +2355,19 @@ var ASM_CONSTS = {
         var is_SDL_HWSURFACE = flags & 0x00000001;
         var is_SDL_HWPALETTE = flags & 0x00200000;
         var is_SDL_OPENGL = flags & 0x04000000;
-
+  
         var surf = _malloc(60);
         var pixelFormat = _malloc(44);
         //surface with SDL_HWPALETTE flag is 8bpp surface (1 byte)
         var bpp = is_SDL_HWPALETTE ? 1 : 4;
         var buffer = 0;
-
+  
         // preemptively initialize this for software surfaces,
         // otherwise it will be lazily initialized inside of SDL_LockSurface
         if (!is_SDL_HWSURFACE && !is_SDL_OPENGL) {
           buffer = _malloc(width * height * 4);
         }
-
+  
         HEAP32[((surf)>>2)] = flags;
         HEAPU32[(((surf)+(4))>>2)] = pixelFormat;
         HEAP32[(((surf)+(8))>>2)] = width;
@@ -5736,24 +2375,24 @@ var ASM_CONSTS = {
         HEAP32[(((surf)+(16))>>2)] = width * bpp;  // assuming RGBA or indexed for now,
                                                                                           // since that is what ImageData gives us in browsers
         HEAPU32[(((surf)+(20))>>2)] = buffer;
-
+  
         HEAP32[(((surf)+(36))>>2)] = 0;
         HEAP32[(((surf)+(40))>>2)] = 0;
         HEAP32[(((surf)+(44))>>2)] = Module["canvas"].width;
         HEAP32[(((surf)+(48))>>2)] = Module["canvas"].height;
-
+  
         HEAP32[(((surf)+(56))>>2)] = 1;
-
+  
         HEAP32[((pixelFormat)>>2)] = -2042224636;
         HEAP32[(((pixelFormat)+(4))>>2)] = 0;// TODO
         HEAP8[(pixelFormat)+(8)] = bpp * 8;
         HEAP8[(pixelFormat)+(9)] = bpp;
-
+  
         HEAP32[(((pixelFormat)+(12))>>2)] = rmask || 0x000000ff;
         HEAP32[(((pixelFormat)+(16))>>2)] = gmask || 0x0000ff00;
         HEAP32[(((pixelFormat)+(20))>>2)] = bmask || 0x00ff0000;
         HEAP32[(((pixelFormat)+(24))>>2)] = amask || 0xff000000;
-
+  
         // Decide if we want to use WebGL or not
         SDL.GL = SDL.GL || is_SDL_OPENGL;
         var canvas;
@@ -5768,16 +2407,16 @@ var ASM_CONSTS = {
         } else {
           canvas = Module['canvas'];
         }
-
+  
         var webGLContextAttributes = {
           antialias: ((SDL.glAttributes[13 /*SDL_GL_MULTISAMPLEBUFFERS*/] != 0) && (SDL.glAttributes[14 /*SDL_GL_MULTISAMPLESAMPLES*/] > 1)),
           depth: (SDL.glAttributes[6 /*SDL_GL_DEPTH_SIZE*/] > 0),
           stencil: (SDL.glAttributes[7 /*SDL_GL_STENCIL_SIZE*/] > 0),
           alpha: (SDL.glAttributes[3 /*SDL_GL_ALPHA_SIZE*/] > 0)
         };
-
+  
         var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
-
+  
         SDL.surfaces[surf] = {
           width,
           height,
@@ -5791,10 +2430,10 @@ var ASM_CONSTS = {
           locked: 0,
           usePageCanvas,
           source,
-
+  
           isFlagSet: (flag) => flags & flag
         };
-
+  
         return surf;
       },
   copyIndexedColorData(surfData, rX, rY, rW, rH) {
@@ -5803,24 +2442,24 @@ var ASM_CONSTS = {
         if (!surfData.colors) {
           return;
         }
-
+  
         var fullWidth  = Module['canvas'].width;
         var fullHeight = Module['canvas'].height;
-
+  
         var startX  = rX || 0;
         var startY  = rY || 0;
         var endX    = (rW || (fullWidth - startX)) + startX;
         var endY    = (rH || (fullHeight - startY)) + startY;
-
+  
         var buffer  = surfData.buffer;
-
+  
         if (!surfData.image.data32) {
           surfData.image.data32 = new Uint32Array(surfData.image.data.buffer);
         }
         var data32   = surfData.image.data32;
-
+  
         var colors32 = surfData.colors32;
-
+  
         for (var y = startY; y < endY; ++y) {
           var base = y * fullWidth;
           for (var x = startX; x < endX; ++x) {
@@ -5835,14 +2474,14 @@ var ASM_CONSTS = {
           HEAP32[((refcountPointer)>>2)] = refcount - 1;
           return;
         }
-
+  
         var info = SDL.surfaces[surf];
         if (!info.usePageCanvas && info.canvas) SDL.canvasPool.push(info.canvas);
         if (info.buffer) _free(info.buffer);
         _free(info.pixelFormat);
         _free(surf);
         SDL.surfaces[surf] = null;
-
+  
         if (surf === SDL.screen) {
           SDL.screen = null;
         }
@@ -5864,12 +2503,12 @@ var ASM_CONSTS = {
         if (dstData.clipRect) {
           var widthScale = (!scale || sr.w === 0) ? 1 : sr.w / dr.w;
           var heightScale = (!scale || sr.h === 0) ? 1 : sr.h / dr.h;
-
+  
           dr = SDL.intersectionOfRects(dstData.clipRect, dr);
-
+  
           sr.w = dr.w * widthScale;
           sr.h = dr.h * heightScale;
-
+  
           if (dstrect) {
             SDL.updateRect(dstrect, dr);
           }
@@ -5911,9 +2550,9 @@ var ASM_CONSTS = {
         switch (event.type) {
           case 'touchstart': case 'touchmove': {
             event.preventDefault();
-
+  
             var touches = [];
-
+  
             // Clear out any touchstart events that we've already processed
             if (event.type === 'touchstart') {
               for (var i = 0; i < event.touches.length; i++) {
@@ -5926,7 +2565,7 @@ var ASM_CONSTS = {
             } else {
               touches = event.touches;
             }
-
+  
             var firstTouch = touches[0];
             if (firstTouch) {
               if (event.type == 'touchstart') {
@@ -5945,7 +2584,7 @@ var ASM_CONSTS = {
               };
               SDL.events.push(mouseEvent);
             }
-
+  
             for (var i = 0; i < touches.length; i++) {
               var touch = touches[i];
               SDL.events.push({
@@ -5957,7 +2596,7 @@ var ASM_CONSTS = {
           }
           case 'touchend': {
             event.preventDefault();
-
+  
             // Remove the entry in the SDL.downFingers hash
             // because the finger is no longer down.
             for (var i = 0; i < event.changedTouches.length; i++) {
@@ -5966,7 +2605,7 @@ var ASM_CONSTS = {
                 delete SDL.downFingers[touch.identifier];
               }
             }
-
+  
             var mouseEvent = {
               type: 'mouseup',
               button: 0,
@@ -5975,7 +2614,7 @@ var ASM_CONSTS = {
             };
             SDL.DOMButtons[0] = 0;
             SDL.events.push(mouseEvent);
-
+  
             for (var i = 0; i < event.changedTouches.length; i++) {
               var touch = event.changedTouches[i];
               SDL.events.push({
@@ -5991,13 +2630,13 @@ var ASM_CONSTS = {
             var delta = -Browser.getMouseWheelDelta(event);
             // Quantize to integer so that minimum scroll is at least +/- 1.
             delta = (delta == 0) ? 0 : (delta > 0 ? Math.max(delta, 1) : Math.min(delta, -1));
-
+  
             // Simulate old-style SDL events representing mouse wheel input as buttons
             // Subtract one since JS->C marshalling is defined to add one back.
             var button = delta > 0 ? 3 /*SDL_BUTTON_WHEELUP-1*/ : 4 /*SDL_BUTTON_WHEELDOWN-1*/;
             SDL.events.push({ type: 'mousedown', button, pageX: event.pageX, pageY: event.pageY });
             SDL.events.push({ type: 'mouseup', button, pageX: event.pageX, pageY: event.pageY });
-
+  
             // Pass a delta motion event.
             SDL.events.push({ type: 'wheel', deltaX: 0, deltaY: delta });
             // If we don't prevent this, then 'wheel' event will be sent again by
@@ -6040,7 +2679,7 @@ var ASM_CONSTS = {
             if (event.type !== 'keydown' || (!SDL.unicode && !SDL.textInput) || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
               event.preventDefault();
             }
-
+  
             if (event.type == 'mousedown') {
               SDL.DOMButtons[event.button] = 1;
               SDL.events.push({
@@ -6058,7 +2697,7 @@ var ASM_CONSTS = {
               if (!SDL.DOMButtons[event.button]) {
                 return;
               }
-
+  
               SDL.events.push({
                 type: 'touchend',
                 touch: {
@@ -6070,7 +2709,7 @@ var ASM_CONSTS = {
               });
               SDL.DOMButtons[event.button] = 0;
             }
-
+  
             // We can only request fullscreen as the result of user input.
             // Due to this limitation, we toggle a boolean on keydown which
             // SDL_WM_ToggleFullScreen will check and subsequently set another
@@ -6087,7 +2726,7 @@ var ASM_CONSTS = {
               }
               SDL.canRequestFullscreen = false;
             }
-
+  
             // SDL expects a unicode character to be passed to its keydown events.
             // Unfortunately, the browser APIs only provide a charCode property on
             // keypress events, so we must backfill in keydown events with their
@@ -6099,7 +2738,7 @@ var ASM_CONSTS = {
             } else if (event.type === 'keydown') {
               SDL.savedKeydown = event;
             }
-
+  
             // Don't push keypress events unless SDL_StartTextInput has been called.
             if (event.type !== 'keypress' || SDL.textInput) {
               SDL.events.push(event);
@@ -6178,7 +2817,7 @@ var ASM_CONSTS = {
   handleEvent(event) {
         if (event.handled) return;
         event.handled = true;
-
+  
         switch (event.type) {
           case 'touchstart': case 'touchend': case 'touchmove': {
             Browser.calculateMouseEvent(event);
@@ -6204,7 +2843,7 @@ var ASM_CONSTS = {
             } else {
               delete SDL.keyboardMap[code];
             }
-
+  
             break;
           }
           case 'mousedown': case 'mouseup':
@@ -6225,7 +2864,7 @@ var ASM_CONSTS = {
       },
   flushEventsToHandler() {
         if (!SDL.eventHandler) return;
-
+  
         while (SDL.pollEvent(SDL.eventHandlerTemp)) {
           ((a1, a2) => dynCall_iii(SDL.eventHandler, a1, a2))(SDL.eventHandlerContext, SDL.eventHandlerTemp);
         }
@@ -6253,9 +2892,9 @@ var ASM_CONSTS = {
           _free(event); // the copy is no longer needed
           return;
         }
-
+  
         SDL.handleEvent(event);
-
+  
         switch (event.type) {
           case 'keydown': case 'keyup': {
             var down = event.type === 'keydown';
@@ -6267,7 +2906,7 @@ var ASM_CONSTS = {
             } else {
               scan = SDL.scanCodes[key] || key;
             }
-
+  
             HEAP32[((ptr)>>2)] = SDL.DOMEventToSDLEvent[event.type];
             HEAP8[(ptr)+(8)] = down ? 1 : 0;
             HEAP8[(ptr)+(9)] = 0; // TODO
@@ -6276,7 +2915,7 @@ var ASM_CONSTS = {
             HEAP16[(((ptr)+(20))>>1)] = SDL.modState;
             // some non-character keys (e.g. backspace and tab) won't have keypressCharCode set, fill in with the keyCode.
             HEAP32[(((ptr)+(24))>>2)] = event.keypressCharCode || key;
-
+  
             break;
           }
           case 'keypress': {
@@ -6466,22 +3105,22 @@ var ASM_CONSTS = {
           audio.webAudioNode['buffer'] = webAudio.decodedBuffer;
           audio.webAudioNode['loop'] = audio.loop;
           audio.webAudioNode['onended'] = audio['onended']; // For <media> element compatibility, route the onended signal to the instance.
-
+  
           audio.webAudioPannerNode = SDL.audioContext['createPanner']();
           // avoid Chrome bug
           // If posz = 0, the sound will come from only the right.
           // By posz = -0.5 (slightly ahead), the sound will come from right and left correctly.
           audio.webAudioPannerNode["setPosition"](0, 0, -.5);
           audio.webAudioPannerNode['panningModel'] = 'equalpower';
-
+  
           // Add an intermediate gain node to control volume.
           audio.webAudioGainNode = SDL.audioContext['createGain']();
           audio.webAudioGainNode['gain']['value'] = audio.volume;
-
+  
           audio.webAudioNode['connect'](audio.webAudioPannerNode);
           audio.webAudioPannerNode['connect'](audio.webAudioGainNode);
           audio.webAudioGainNode['connect'](SDL.audioContext['destination']);
-
+  
           audio.webAudioNode['start'](0, audio.currentPosition);
           audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
         } catch(e) {
@@ -6564,7 +3203,7 @@ var ASM_CONSTS = {
         for (var i = 0; i < state.buttons.length; i++) {
           buttons[i] = SDL.getJoystickButtonState(state.buttons[i]);
         }
-
+  
         SDL.lastJoystickState[joystick] = {
           buttons,
           axes: state.axes.slice(0),
@@ -6622,7 +3261,7 @@ var ASM_CONSTS = {
                 });
               }
             }
-
+  
             SDL.recordJoystickState(joystick, state);
           }
         }
@@ -6666,7 +3305,7 @@ var ASM_CONSTS = {
       }
       SDL.audio.paused = pauseOn;
     };
-
+  
   var _SDL_CloseAudio = () => {
       if (SDL.audio) {
         if (SDL.audio.callbackRemover) {
@@ -6684,13 +3323,13 @@ var ASM_CONSTS = {
       HEAPU8.fill(0, address, address + size);
       return address;
     };
-
-
+  
+  
   /** @param{number} initFlags */
   var _SDL_Init = (initFlags) => {
       SDL.startTime = Date.now();
       SDL.initFlags = initFlags;
-
+  
       // capture all key events. we just keep down and up, but also capture press to prevent default actions
       if (!Module['doNotCaptureKeyboard']) {
         var keyboardListeningElement = Module['keyboardListeningElement'] || document;
@@ -6701,7 +3340,7 @@ var ASM_CONSTS = {
         window.addEventListener("blur", SDL.receiveEvent);
         document.addEventListener("visibilitychange", SDL.receiveEvent);
       }
-
+  
       window.addEventListener("unload", SDL.receiveEvent);
       SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
       zeroMemory(SDL.keyboardState, 0x10000);
@@ -6721,7 +3360,7 @@ var ASM_CONSTS = {
       SDL.DOMEventToSDLEvent['visibilitychange'] = 0x200 /* SDL_WINDOWEVENT */;
       SDL.DOMEventToSDLEvent['focus']      = 0x200 /* SDL_WINDOWEVENT */;
       SDL.DOMEventToSDLEvent['blur']       = 0x200 /* SDL_WINDOWEVENT */;
-
+  
       // These are not technically DOM events; the HTML gamepad API is poll-based.
       // However, we define them here, as the rest of the SDL code assumes that
       // all SDL events originate as DOM events.
@@ -6751,8 +3390,8 @@ var ASM_CONSTS = {
         });
       });
     };
-
-
+  
+  
   var _SDL_OpenAudio = (desired, obtained) => {
       try {
         SDL.audio = {
@@ -6804,7 +3443,7 @@ var ASM_CONSTS = {
         } else if ((SDL.audio.samples & (SDL.audio.samples-1)) != 0) {
           throw `Audio callback buffer size ${SDL.audio.samples} must be a power-of-two!`;
         }
-
+  
         var totalSamples = SDL.audio.samples*SDL.audio.channels;
         if (SDL.audio.format == 8) {
           SDL.audio.bytesPerSample = 1;
@@ -6821,12 +3460,12 @@ var ASM_CONSTS = {
         // Audio samples are played with a constant delay of this many seconds to account for browser and jitter.
         SDL.audio.bufferingDelay = 50 / 1000;
         SDL.audio.buffer = _malloc(SDL.audio.bufferSize);
-
+  
         // To account for jittering in frametimes, always have multiple audio
         // buffers queued up for the audio output device.
         // This helps that we won't starve that easily if a frame takes long to complete.
         SDL.audio.numSimultaneouslyQueuedBuffers = Module['SDL_numSimultaneouslyQueuedBuffers'] || 5;
-
+  
         // Pulls and queues new audio data if appropriate. This function gets
         // "over-called" in both requestAnimationFrames and setTimeouts to ensure
         // that we get the finest granularity possible and as many chances from
@@ -6836,20 +3475,20 @@ var ASM_CONSTS = {
         // main loop, so we cannot rely on that alone.
         SDL.audio.queueNewAudioData = () => {
           if (!SDL.audio) return;
-
+  
           for (var i = 0; i < SDL.audio.numSimultaneouslyQueuedBuffers; ++i) {
             // Only queue new data if we don't have enough audio data already in queue. Otherwise skip this time slot
             // and wait to queue more in the next time the callback is run.
             var secsUntilNextPlayStart = SDL.audio.nextPlayTime - SDL.audioContext['currentTime'];
             if (secsUntilNextPlayStart >= SDL.audio.bufferingDelay + SDL.audio.bufferDurationSecs*SDL.audio.numSimultaneouslyQueuedBuffers) return;
-
+  
             // Ask SDL audio data from the user code.
             ((a1, a2, a3) => dynCall_viii(SDL.audio.callback, a1, a2, a3))(SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
             // And queue it to be played after the currently playing audio stream.
             SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
           }
         }
-
+  
         var sleepCallback = () => {
           SDL.audio?.queueNewAudioData?.();
         };
@@ -6857,25 +3496,25 @@ var ASM_CONSTS = {
         SDL.audio.callbackRemover = () => {
           Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter((callback) => callback !== sleepCallback);
         }
-
+  
         // Create a callback function that will be routinely called to ask more audio data from the user application.
         SDL.audio.caller = () => {
           if (!SDL.audio) return;
-
+  
           --SDL.audio.numAudioTimersPending;
-
+  
           SDL.audio.queueNewAudioData();
-
+  
           // Queue this callback function to be called again later to pull more audio data.
           var secsUntilNextPlayStart = SDL.audio.nextPlayTime - SDL.audioContext['currentTime'];
-
+  
           // Queue the next audio frame push to be performed half-way when the previously queued buffer has finished playing.
           var preemptBufferFeedSecs = SDL.audio.bufferDurationSecs/2.0;
-
+  
           if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
             ++SDL.audio.numAudioTimersPending;
             SDL.audio.timer = safeSetTimeout(SDL.audio.caller, Math.max(0.0, 1000.0*(secsUntilNextPlayStart-preemptBufferFeedSecs)));
-
+  
             // If we are risking starving, immediately queue an extra buffer.
             if (SDL.audio.numAudioTimersPending < SDL.audio.numSimultaneouslyQueuedBuffers) {
               ++SDL.audio.numAudioTimersPending;
@@ -6883,22 +3522,22 @@ var ASM_CONSTS = {
             }
           }
         };
-
+  
         SDL.audio.audioOutput = new Audio();
-
+  
         // Initialize Web Audio API if we haven't done so yet. Note: Only initialize Web Audio context ever once on the web page,
         // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
         SDL.openAudioContext();
         if (!SDL.audioContext) throw 'Web Audio API is not available!';
         autoResumeAudioContext(SDL.audioContext);
         SDL.audio.nextPlayTime = 0; // Time in seconds when the next audio block is due to start.
-
+  
         // The pushAudio function with a new audio buffer whenever there is new
         // audio data to schedule to be played back on the device.
         SDL.audio.pushAudio = (ptr, sizeBytes) => {
           try {
             if (SDL.audio.paused) return;
-
+  
             var sizeSamples = sizeBytes / SDL.audio.bytesPerSample; // How many samples fit in the callback buffer?
             var sizeSamplesPerChannel = sizeSamples / SDL.audio.channels; // How many samples per a single channel fit in the cb buffer?
             if (sizeSamplesPerChannel != SDL.audio.samples) {
@@ -6908,11 +3547,11 @@ var ASM_CONSTS = {
             var source = SDL.audioContext['createBufferSource']();
             var soundBuffer = SDL.audioContext['createBuffer'](SDL.audio.channels,sizeSamplesPerChannel,SDL.audio.freq);
             source['connect'](SDL.audioContext['destination']);
-
+  
             SDL.fillWebAudioBufferFromHeap(ptr, sizeSamplesPerChannel, soundBuffer);
             // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
             source['buffer'] = soundBuffer;
-
+  
             // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
             // sample buffer has finished.
             var curtime = SDL.audioContext['currentTime'];
@@ -6935,13 +3574,13 @@ var ASM_CONSTS = {
             }
             SDL.audio.curBufferEnd = Math.round(playtime * SDL.audio.freq + sizeSamplesPerChannel);
             */
-
+  
             SDL.audio.nextPlayTime = playtime + SDL.audio.bufferDurationSecs;
           } catch(e) {
             err(`Web Audio API error playing back audio: ${e.toString()}`);
           }
         }
-
+  
         if (obtained) {
           // Report back the initialized audio parameters.
           HEAP32[((obtained)>>2)] = SDL.audio.freq;
@@ -6953,7 +3592,7 @@ var ASM_CONSTS = {
           HEAPU32[(((obtained)+(20))>>2)] = SDL.audio.userdata;
         }
         SDL.allocateChannels(32);
-
+  
       } catch(e) {
         err(`Initializing SDL audio threw an exception: "${e.toString()}"! Continuing without audio`);
         SDL.audio = null;
@@ -6979,7 +3618,7 @@ var ASM_CONSTS = {
 
   var _SDL_UnlockAudio = () => {};
 
-
+  
   var _SDL_WasInit = (flags) => {
       if (SDL.startTime === null) {
         _SDL_Init(0);
@@ -6987,7 +3626,7 @@ var ASM_CONSTS = {
       return 1;
     };
 
-
+  
   var initRandomFill = () => {
       if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
         // for modern web browsers
@@ -7020,9 +3659,9 @@ var ASM_CONSTS = {
       // Lazily init on the first invocation.
       return (randomFill = initRandomFill())(view);
     };
-
-
-
+  
+  
+  
   var PATH_FS = {
   resolve:(...args) => {
         var resolvedPath = '',
@@ -7076,10 +3715,10 @@ var ASM_CONSTS = {
         return outputParts.join('/');
       },
   };
-
-
+  
+  
   var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined;
-
+  
     /**
      * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
      * array that contains uint8 values, returns a copy of that string as a
@@ -7098,7 +3737,7 @@ var ASM_CONSTS = {
       // (As a tiny code save trick, compare endPtr against endIdx using a negation,
       // so that undefined means Infinity)
       while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
-
+  
       if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
         return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
       }
@@ -7121,7 +3760,7 @@ var ASM_CONSTS = {
           if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte ' + ptrToString(u0) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
           u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
         }
-
+  
         if (u0 < 0x10000) {
           str += String.fromCharCode(u0);
         } else {
@@ -7131,9 +3770,9 @@ var ASM_CONSTS = {
       }
       return str;
     };
-
+  
   var FS_stdin_getChar_buffer = [];
-
+  
   var FS_stdin_getChar = () => {
       if (!FS_stdin_getChar_buffer.length) {
         var result = null;
@@ -7142,7 +3781,7 @@ var ASM_CONSTS = {
           var BUFSIZE = 256;
           var buf = Buffer.alloc(BUFSIZE);
           var bytesRead = 0;
-
+  
           // For some reason we must suppress a closure warning here, even though
           // fd definitely exists on process.stdin, and is even the proper way to
           // get the fd of stdin,
@@ -7151,7 +3790,7 @@ var ASM_CONSTS = {
           // so it is related to the surrounding code in some unclear manner.
           /** @suppress {missingProperties} */
           var fd = process.stdin.fd;
-
+  
           try {
             bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
           } catch(e) {
@@ -7161,7 +3800,7 @@ var ASM_CONSTS = {
             if (e.toString().includes('EOF')) bytesRead = 0;
             else throw e;
           }
-
+  
           if (bytesRead > 0) {
             result = buf.slice(0, bytesRead).toString('utf-8');
           }
@@ -7323,9 +3962,9 @@ var ASM_CONSTS = {
         },
   },
   };
-
-
-
+  
+  
+  
   var alignMemory = (size, alignment) => {
       assert(alignment, "alignment argument is required");
       return Math.ceil(size / alignment) * alignment;
@@ -7402,7 +4041,7 @@ var ASM_CONSTS = {
           // When the byte data of the file is populated, this will point to either a typed array, or a normal JS array. Typed arrays are preferred
           // for performance, and used by default. However, typed arrays are not resizable like normal JS arrays are, so there is a small disk size
           // penalty involved for appending file writes that continuously grow a file similar to std::vector capacity vs used -scheme.
-          node.contents = null;
+          node.contents = null; 
         } else if (FS.isLink(node.mode)) {
           node.node_ops = MEMFS.ops_table.link.node;
           node.stream_ops = MEMFS.ops_table.link.stream;
@@ -7564,11 +4203,11 @@ var ASM_CONSTS = {
   write(stream, buffer, offset, length, position, canOwn) {
           // The data buffer should be a typed array view
           assert(!(buffer instanceof ArrayBuffer));
-
+  
           if (!length) return 0;
           var node = stream.node;
           node.timestamp = Date.now();
-
+  
           if (buffer.subarray && (!node.contents || node.contents.subarray)) { // This write is from a typed array to a typed array?
             if (canOwn) {
               assert(position === 0, 'canOwn must imply no weird position inside the file');
@@ -7584,7 +4223,7 @@ var ASM_CONSTS = {
               return length;
             }
           }
-
+  
           // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
           MEMFS.expandFileStorage(node, position+length);
           if (node.contents.subarray && buffer.subarray) {
@@ -7654,7 +4293,7 @@ var ASM_CONSTS = {
         },
   },
   };
-
+  
   /** @param {boolean=} noRunDep */
   var asyncLoad = (url, onload, onerror, noRunDep) => {
       var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
@@ -7674,16 +4313,16 @@ var ASM_CONSTS = {
       );
       if (dep) addRunDependency(dep);
     };
-
-
+  
+  
   var FS_createDataFile = (parent, name, fileData, canRead, canWrite, canOwn) => {
       FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
     };
-
+  
   var FS_handledByPreloadPlugin = (byteArray, fullname, finish, onerror) => {
       // Ensure plugins are ready.
       if (typeof Browser != 'undefined') Browser.init();
-
+  
       var handled = false;
       preloadPlugins.forEach((plugin) => {
         if (handled) return;
@@ -7723,7 +4362,7 @@ var ASM_CONSTS = {
         processData(url);
       }
     };
-
+  
   var FS_modeStringToFlags = (str) => {
       var flagModes = {
         'r': 0,
@@ -7739,19 +4378,19 @@ var ASM_CONSTS = {
       }
       return flags;
     };
-
+  
   var FS_getMode = (canRead, canWrite) => {
       var mode = 0;
       if (canRead) mode |= 292 | 73;
       if (canWrite) mode |= 146;
       return mode;
     };
-
-
-
-
-
-
+  
+  
+  
+  
+  
+  
     /**
      * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
      * emscripten HEAP, returns a copy of that string as a Javascript String object.
@@ -7771,11 +4410,11 @@ var ASM_CONSTS = {
       assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
       return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
     };
-
+  
   var strError = (errno) => {
       return UTF8ToString(_strerror(errno));
     };
-
+  
   var ERRNO_CODES = {
       'EPERM': 63,
       'ENOENT': 44,
@@ -8007,43 +4646,43 @@ var ASM_CONSTS = {
       },
   lookupPath(path, opts = {}) {
         path = PATH_FS.resolve(path);
-
+  
         if (!path) return { path: '', node: null };
-
+  
         var defaults = {
           follow_mount: true,
           recurse_count: 0
         };
         opts = Object.assign(defaults, opts)
-
+  
         if (opts.recurse_count > 8) {  // max recursive lookup of 8
           throw new FS.ErrnoError(32);
         }
-
+  
         // split the absolute path
         var parts = path.split('/').filter((p) => !!p);
-
+  
         // start at the root
         var current = FS.root;
         var current_path = '/';
-
+  
         for (var i = 0; i < parts.length; i++) {
           var islast = (i === parts.length-1);
           if (islast && opts.parent) {
             // stop resolving
             break;
           }
-
+  
           current = FS.lookupNode(current, parts[i]);
           current_path = PATH.join2(current_path, parts[i]);
-
+  
           // jump to the mount's root node if this is a mountpoint
           if (FS.isMountpoint(current)) {
             if (!islast || (islast && opts.follow_mount)) {
               current = current.mounted.root;
             }
           }
-
+  
           // by default, lookupPath will not follow a symlink if it is the final path component.
           // setting opts.follow = true will override this behavior.
           if (!islast || opts.follow) {
@@ -8051,17 +4690,17 @@ var ASM_CONSTS = {
             while (FS.isLink(current.mode)) {
               var link = FS.readlink(current_path);
               current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
-
+  
               var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count + 1 });
               current = lookup.node;
-
+  
               if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
                 throw new FS.ErrnoError(32);
               }
             }
           }
         }
-
+  
         return { path: current_path, node: current };
       },
   getPath(node) {
@@ -8078,7 +4717,7 @@ var ASM_CONSTS = {
       },
   hashName(parentid, name) {
         var hash = 0;
-
+  
         for (var i = 0; i < name.length; i++) {
           hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
         }
@@ -8122,9 +4761,9 @@ var ASM_CONSTS = {
   createNode(parent, name, mode, rdev) {
         assert(typeof parent == 'object')
         var node = new FS.FSNode(parent, name, mode, rdev);
-
+  
         FS.hashAddNode(node);
-
+  
         return node;
       },
   destroyNode(node) {
@@ -8251,7 +4890,7 @@ var ASM_CONSTS = {
   getStream:(fd) => FS.streams[fd],
   createStream(stream, fd = -1) {
         assert(fd >= -1);
-
+  
         // clone it, so we can return an instance of FSStream
         stream = Object.assign(new FS.FSStream(), stream);
         if (fd == -1) {
@@ -8291,15 +4930,15 @@ var ASM_CONSTS = {
   getMounts(mount) {
         var mounts = [];
         var check = [mount];
-
+  
         while (check.length) {
           var m = check.pop();
-
+  
           mounts.push(m);
-
+  
           check.push(...m.mounts);
         }
-
+  
         return mounts;
       },
   syncfs(populate, callback) {
@@ -8307,22 +4946,22 @@ var ASM_CONSTS = {
           callback = populate;
           populate = false;
         }
-
+  
         FS.syncFSRequests++;
-
+  
         if (FS.syncFSRequests > 1) {
           err(`warning: ${FS.syncFSRequests} FS.syncfs operations in flight at once, probably just doing extra work`);
         }
-
+  
         var mounts = FS.getMounts(FS.root.mount);
         var completed = 0;
-
+  
         function doCallback(errCode) {
           assert(FS.syncFSRequests > 0);
           FS.syncFSRequests--;
           return callback(errCode);
         }
-
+  
         function done(errCode) {
           if (errCode) {
             if (!done.errored) {
@@ -8335,7 +4974,7 @@ var ASM_CONSTS = {
             doCallback(null);
           }
         };
-
+  
         // sync all mounts
         mounts.forEach((mount) => {
           if (!mount.type.syncfs) {
@@ -8353,79 +4992,79 @@ var ASM_CONSTS = {
         var root = mountpoint === '/';
         var pseudo = !mountpoint;
         var node;
-
+  
         if (root && FS.root) {
           throw new FS.ErrnoError(10);
         } else if (!root && !pseudo) {
           var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
-
+  
           mountpoint = lookup.path;  // use the absolute path
           node = lookup.node;
-
+  
           if (FS.isMountpoint(node)) {
             throw new FS.ErrnoError(10);
           }
-
+  
           if (!FS.isDir(node.mode)) {
             throw new FS.ErrnoError(54);
           }
         }
-
+  
         var mount = {
           type,
           opts,
           mountpoint,
           mounts: []
         };
-
+  
         // create a root node for the fs
         var mountRoot = type.mount(mount);
         mountRoot.mount = mount;
         mount.root = mountRoot;
-
+  
         if (root) {
           FS.root = mountRoot;
         } else if (node) {
           // set as a mountpoint
           node.mounted = mount;
-
+  
           // add the new mount to the current mount's children
           if (node.mount) {
             node.mount.mounts.push(mount);
           }
         }
-
+  
         return mountRoot;
       },
   unmount(mountpoint) {
         var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
-
+  
         if (!FS.isMountpoint(lookup.node)) {
           throw new FS.ErrnoError(28);
         }
-
+  
         // destroy the nodes for this mount, and all its child mounts
         var node = lookup.node;
         var mount = node.mounted;
         var mounts = FS.getMounts(mount);
-
+  
         Object.keys(FS.nameTable).forEach((hash) => {
           var current = FS.nameTable[hash];
-
+  
           while (current) {
             var next = current.name_next;
-
+  
             if (mounts.includes(current.mount)) {
               FS.destroyNode(current);
             }
-
+  
             current = next;
           }
         });
-
+  
         // no longer a mountpoint
         node.mounted = null;
-
+  
         // remove this mount from the child mounts
         var idx = node.mount.mounts.indexOf(mount);
         assert(idx !== -1);
@@ -8509,13 +5148,13 @@ var ASM_CONSTS = {
         var new_name = PATH.basename(new_path);
         // parents must exist
         var lookup, old_dir, new_dir;
-
+  
         // let the errors from non existent directories percolate up
         lookup = FS.lookupPath(old_path, { parent: true });
         old_dir = lookup.node;
         lookup = FS.lookupPath(new_path, { parent: true });
         new_dir = lookup.node;
-
+  
         if (!old_dir || !new_dir) throw new FS.ErrnoError(44);
         // need to be part of the same mount
         if (old_dir.mount !== new_dir.mount) {
@@ -8576,7 +5215,7 @@ var ASM_CONSTS = {
         // do the underlying fs rename
         try {
           old_dir.node_ops.rename(old_node, new_dir, new_name);
-          // update old node (we do this here to avoid each backend
+          // update old node (we do this here to avoid each backend 
           // needing to)
           old_node.parent = new_dir;
         } catch (e) {
@@ -8816,7 +5455,7 @@ var ASM_CONSTS = {
         }
         // we've already handled these, don't pass down to the underlying vfs
         flags &= ~(128 | 512 | 131072);
-
+  
         // register the stream with the filesystem
         var stream = FS.createStream({
           node,
@@ -9099,7 +5738,7 @@ var ASM_CONSTS = {
         // TODO deprecate the old functionality of a single
         // input / output callback and that utilizes FS.createDevice
         // and instead require a unique set of stream ops
-
+  
         // by default, we symlink the standard streams to the
         // default tty devices. however, if the standard streams
         // have been overwritten we create a unique device for
@@ -9119,7 +5758,7 @@ var ASM_CONSTS = {
         } else {
           FS.symlink('/dev/tty1', '/dev/stderr');
         }
-
+  
         // open default streams for the stdin, stdout and stderr devices
         var stdin = FS.open('/dev/stdin', 0);
         var stdout = FS.open('/dev/stdout', 1);
@@ -9134,15 +5773,15 @@ var ASM_CONSTS = {
           FS.genericErrors[code] = new FS.ErrnoError(code);
           FS.genericErrors[code].stack = '<generic error, no stack>';
         });
-
+  
         FS.nameTable = new Array(4096);
-
+  
         FS.mount(MEMFS, {}, '/');
-
+  
         FS.createDefaultDirectories();
         FS.createDefaultDevices();
         FS.createSpecialDirectories();
-
+  
         FS.filesystems = {
           'MEMFS': MEMFS,
         };
@@ -9150,12 +5789,12 @@ var ASM_CONSTS = {
   init(input, output, error) {
         assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
         FS.init.initialized = true;
-
+  
         // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
         Module['stdin'] = input || Module['stdin'];
         Module['stdout'] = output || Module['stdout'];
         Module['stderr'] = error || Module['stderr'];
-
+  
         FS.createStandardStreams();
       },
   quit() {
@@ -9345,27 +5984,27 @@ var ASM_CONSTS = {
             var header;
             var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
             var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
-
+  
             var chunkSize = 1024*1024; // Chunk size in bytes
-
+  
             if (!hasByteServing) chunkSize = datalength;
-
+  
             // Function to get a range from the remote URL.
             var doXHR = (from, to) => {
               if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
               if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-
+  
               // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
               var xhr = new XMLHttpRequest();
               xhr.open('GET', url, false);
               if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-
+  
               // Some hints to the browser that we want binary data.
               xhr.responseType = 'arraybuffer';
               if (xhr.overrideMimeType) {
                 xhr.overrideMimeType('text/plain; charset=x-user-defined');
               }
-
+  
               xhr.send(null);
               if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
               if (xhr.response !== undefined) {
@@ -9384,7 +6023,7 @@ var ASM_CONSTS = {
               if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
               return lazyArray.chunks[chunkNum];
             });
-
+  
             if (usesGzip || !datalength) {
               // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
               chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
@@ -9392,7 +6031,7 @@ var ASM_CONSTS = {
               chunkSize = datalength;
               out("LazyFiles on gzip forces download of the whole file when length is accessed");
             }
-
+  
             this._length = datalength;
             this._chunkSize = chunkSize;
             this.lengthKnown = true;
@@ -9410,7 +6049,7 @@ var ASM_CONSTS = {
             return this._chunkSize;
           }
         }
-
+  
         if (typeof XMLHttpRequest != 'undefined') {
           if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
           var lazyArray = new LazyUint8Array();
@@ -9418,7 +6057,7 @@ var ASM_CONSTS = {
         } else {
           var properties = { isDevice: false, url: url };
         }
-
+  
         var node = FS.createFile(parent, name, properties, canRead, canWrite);
         // This is a total hack, but I want to get this lazy file code out of the
         // core of MEMFS. If we want to keep this lazy file concept I feel it should
@@ -9499,7 +6138,7 @@ var ASM_CONSTS = {
         abort('FS.standardizePath has been removed; use PATH.normalize instead');
       },
   };
-
+  
   var SYSCALLS = {
   DEFAULT_POLLMASK:5,
   calculateAt(dirfd, path, allowEmpty) {
@@ -9568,7 +6207,7 @@ var ASM_CONSTS = {
   };
   function ___syscall_dup3(fd, newfd, flags) {
   try {
-
+  
       var old = SYSCALLS.getStreamFromFD(fd);
       assert(!flags);
       if (old.fd === newfd) return -28;
@@ -9592,12 +6231,12 @@ var ASM_CONSTS = {
       return ret;
     }
   var syscallGetVarargP = syscallGetVarargI;
-
-
+  
+  
   function ___syscall_fcntl64(fd, cmd, varargs) {
   SYSCALLS.varargs = varargs;
   try {
-
+  
       var stream = SYSCALLS.getStreamFromFD(fd);
       switch (cmd) {
         case 0: {
@@ -9642,7 +6281,7 @@ var ASM_CONSTS = {
 
   function ___syscall_fstat64(fd, buf) {
   try {
-
+  
       var stream = SYSCALLS.getStreamFromFD(fd);
       return SYSCALLS.doStat(FS.stat, stream.path, buf);
     } catch (e) {
@@ -9651,14 +6290,14 @@ var ASM_CONSTS = {
   }
   }
 
-
+  
   var stringToUTF8 = (str, outPtr, maxBytesToWrite) => {
       assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
       return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
     };
   function ___syscall_getcwd(buf, size) {
   try {
-
+  
       if (size === 0) return -28;
       var cwd = FS.cwd();
       var cwdLengthInBytes = lengthBytesUTF8(cwd) + 1;
@@ -9671,19 +6310,19 @@ var ASM_CONSTS = {
   }
   }
 
-
+  
   function ___syscall_getdents64(fd, dirp, count) {
   try {
-
+  
       var stream = SYSCALLS.getStreamFromFD(fd)
       stream.getdents ||= FS.readdir(stream.path);
-
+  
       var struct_size = 280;
       var pos = 0;
       var off = FS.llseek(stream, 0, 1);
-
+  
       var idx = Math.floor(off / struct_size);
-
+  
       while (idx < stream.getdents.length && pos + struct_size <= count) {
         var id;
         var type;
@@ -9722,11 +6361,11 @@ var ASM_CONSTS = {
   }
   }
 
-
+  
   function ___syscall_ioctl(fd, op, varargs) {
   SYSCALLS.varargs = varargs;
   try {
-
+  
       var stream = SYSCALLS.getStreamFromFD(fd);
       switch (op) {
         case 21509: {
@@ -9820,7 +6459,7 @@ var ASM_CONSTS = {
 
   function ___syscall_lstat64(path, buf) {
   try {
-
+  
       path = SYSCALLS.getStr(path);
       return SYSCALLS.doStat(FS.lstat, path, buf);
     } catch (e) {
@@ -9831,7 +6470,7 @@ var ASM_CONSTS = {
 
   function ___syscall_newfstatat(dirfd, path, buf, flags) {
   try {
-
+  
       path = SYSCALLS.getStr(path);
       var nofollow = flags & 256;
       var allowEmpty = flags & 4096;
@@ -9845,11 +6484,11 @@ var ASM_CONSTS = {
   }
   }
 
-
+  
   function ___syscall_openat(dirfd, path, flags, varargs) {
   SYSCALLS.varargs = varargs;
   try {
-
+  
       path = SYSCALLS.getStr(path);
       path = SYSCALLS.calculateAt(dirfd, path);
       var mode = varargs ? syscallGetVarargI() : 0;
@@ -9874,21 +6513,21 @@ var ASM_CONSTS = {
           // able to read from the read end after write end is closed.
           refcnt : 2,
         };
-
+  
         pipe.buckets.push({
           buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
           offset: 0,
           roffset: 0
         });
-
+  
         var rName = PIPEFS.nextname();
         var wName = PIPEFS.nextname();
         var rNode = FS.createNode(PIPEFS.root, rName, 4096, 0);
         var wNode = FS.createNode(PIPEFS.root, wName, 4096, 0);
-
+  
         rNode.pipe = pipe;
         wNode.pipe = pipe;
-
+  
         var readableStream = FS.createStream({
           path: rName,
           node: rNode,
@@ -9897,7 +6536,7 @@ var ASM_CONSTS = {
           stream_ops: PIPEFS.stream_ops
         });
         rNode.stream = readableStream;
-
+  
         var writableStream = FS.createStream({
           path: wName,
           node: wNode,
@@ -9906,7 +6545,7 @@ var ASM_CONSTS = {
           stream_ops: PIPEFS.stream_ops
         });
         wNode.stream = writableStream;
-
+  
         return {
           readable_fd: readableStream.fd,
           writable_fd: writableStream.fd
@@ -9915,7 +6554,7 @@ var ASM_CONSTS = {
   stream_ops:{
   poll(stream) {
           var pipe = stream.node.pipe;
-
+  
           if ((stream.flags & 2097155) === 1) {
             return (256 | 4);
           }
@@ -9927,7 +6566,7 @@ var ASM_CONSTS = {
               }
             }
           }
-
+  
           return 0;
         },
   ioctl(stream, request, varargs) {
@@ -9939,15 +6578,15 @@ var ASM_CONSTS = {
   read(stream, buffer, offset, length, position /* ignored */) {
           var pipe = stream.node.pipe;
           var currentLength = 0;
-
+  
           for (var i = 0; i < pipe.buckets.length; i++) {
             var bucket = pipe.buckets[i];
             currentLength += bucket.offset - bucket.roffset;
           }
-
+  
           assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
           var data = buffer.subarray(offset, offset + length);
-
+  
           if (length <= 0) {
             return 0;
           }
@@ -9956,14 +6595,14 @@ var ASM_CONSTS = {
             throw new FS.ErrnoError(6);
           }
           var toRead = Math.min(currentLength, length);
-
+  
           var totalRead = toRead;
           var toRemove = 0;
-
+  
           for (var i = 0; i < pipe.buckets.length; i++) {
             var currBucket = pipe.buckets[i];
             var bucketSize = currBucket.offset - currBucket.roffset;
-
+  
             if (toRead <= bucketSize) {
               var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
               if (toRead < bucketSize) {
@@ -9982,7 +6621,7 @@ var ASM_CONSTS = {
               toRemove++;
             }
           }
-
+  
           if (toRemove && toRemove == pipe.buckets.length) {
             // Do not generate excessive garbage in use cases such as
             // write several bytes, read everything, write several bytes, read everything...
@@ -9990,24 +6629,24 @@ var ASM_CONSTS = {
             pipe.buckets[toRemove].offset = 0;
             pipe.buckets[toRemove].roffset = 0;
           }
-
+  
           pipe.buckets.splice(0, toRemove);
-
+  
           return totalRead;
         },
   write(stream, buffer, offset, length, position /* ignored */) {
           var pipe = stream.node.pipe;
-
+  
           assert(buffer instanceof ArrayBuffer || ArrayBuffer.isView(buffer));
           var data = buffer.subarray(offset, offset + length);
-
+  
           var dataLen = data.byteLength;
           if (dataLen <= 0) {
             return 0;
           }
-
+  
           var currBucket = null;
-
+  
           if (pipe.buckets.length == 0) {
             currBucket = {
               buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
@@ -10018,9 +6657,9 @@ var ASM_CONSTS = {
           } else {
             currBucket = pipe.buckets[pipe.buckets.length - 1];
           }
-
+  
           assert(currBucket.offset <= PIPEFS.BUCKET_BUFFER_SIZE);
-
+  
           var freeBytesInCurrBuffer = PIPEFS.BUCKET_BUFFER_SIZE - currBucket.offset;
           if (freeBytesInCurrBuffer >= dataLen) {
             currBucket.buffer.set(data, currBucket.offset);
@@ -10031,10 +6670,10 @@ var ASM_CONSTS = {
             currBucket.offset += freeBytesInCurrBuffer;
             data = data.subarray(freeBytesInCurrBuffer, data.byteLength);
           }
-
+  
           var numBuckets = (data.byteLength / PIPEFS.BUCKET_BUFFER_SIZE) | 0;
           var remElements = data.byteLength % PIPEFS.BUCKET_BUFFER_SIZE;
-
+  
           for (var i = 0; i < numBuckets; i++) {
             var newBucket = {
               buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
@@ -10045,7 +6684,7 @@ var ASM_CONSTS = {
             newBucket.buffer.set(data.subarray(0, PIPEFS.BUCKET_BUFFER_SIZE));
             data = data.subarray(PIPEFS.BUCKET_BUFFER_SIZE, data.byteLength);
           }
-
+  
           if (remElements > 0) {
             var newBucket = {
               buffer: new Uint8Array(PIPEFS.BUCKET_BUFFER_SIZE),
@@ -10055,7 +6694,7 @@ var ASM_CONSTS = {
             pipe.buckets.push(newBucket);
             newBucket.buffer.set(data);
           }
-
+  
           return dataLen;
         },
   close(stream) {
@@ -10075,16 +6714,16 @@ var ASM_CONSTS = {
   };
   function ___syscall_pipe(fdPtr) {
   try {
-
+  
       if (fdPtr == 0) {
         throw new FS.ErrnoError(21);
       }
-
+  
       var res = PIPEFS.createPipe();
-
+  
       HEAP32[((fdPtr)>>2)] = res.readable_fd;
       HEAP32[(((fdPtr)+(4))>>2)] = res.writable_fd;
-
+  
       return 0;
     } catch (e) {
     if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;
@@ -10094,7 +6733,7 @@ var ASM_CONSTS = {
 
   function ___syscall_stat64(path, buf) {
   try {
-
+  
       path = SYSCALLS.getStr(path);
       return SYSCALLS.doStat(FS.stat, path, buf);
     } catch (e) {
@@ -10105,7 +6744,7 @@ var ASM_CONSTS = {
 
   function ___syscall_unlinkat(dirfd, path, flags) {
   try {
-
+  
       path = SYSCALLS.getStr(path);
       path = SYSCALLS.calculateAt(dirfd, path);
       if (flags === 0) {
@@ -10122,8 +6761,8 @@ var ASM_CONSTS = {
   }
   }
 
-
-
+  
+  
   var __emscripten_fs_load_embedded_files = (ptr) => {
       do {
         var name_addr = HEAPU32[((ptr)>>2)];
@@ -10190,7 +6829,7 @@ var ASM_CONSTS = {
 
   var getHeapMax = () =>
       HEAPU8.length;
-
+  
   var abortOnCannotGrowMemory = (requestedSize) => {
       abort(`Cannot enlarge memory arrays to size ${requestedSize} bytes (OOM). Either (1) compile with -sINITIAL_MEMORY=X with X higher than the current value ${HEAP8.length}, (2) compile with -sALLOW_MEMORY_GROWTH which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with -sABORTING_MALLOC=0`);
     };
@@ -10212,7 +6851,7 @@ var ASM_CONSTS = {
 
   var ENV = {
   };
-
+  
   var getExecutableName = () => {
       return thisProgram || './this.program';
     };
@@ -10246,7 +6885,7 @@ var ASM_CONSTS = {
       }
       return getEnvStrings.strings;
     };
-
+  
   var stringToAscii = (str, buffer) => {
       for (var i = 0; i < str.length; ++i) {
         assert(str.charCodeAt(i) === (str.charCodeAt(i) & 0xff));
@@ -10278,7 +6917,7 @@ var ASM_CONSTS = {
 
   function _fd_close(fd) {
   try {
-
+  
       var stream = SYSCALLS.getStreamFromFD(fd);
       FS.close(stream);
       return 0;
@@ -10290,7 +6929,7 @@ var ASM_CONSTS = {
 
   function _fd_fdstat_get(fd, pbuf) {
   try {
-
+  
       var rightsBase = 0;
       var rightsInheriting = 0;
       var flags = 0;
@@ -10331,10 +6970,10 @@ var ASM_CONSTS = {
       }
       return ret;
     };
-
+  
   function _fd_read(fd, iov, iovcnt, pnum) {
   try {
-
+  
       var stream = SYSCALLS.getStreamFromFD(fd);
       var num = doReadv(stream, iov, iovcnt);
       HEAPU32[((pnum)>>2)] = num;
@@ -10345,7 +6984,7 @@ var ASM_CONSTS = {
   }
   }
 
-
+  
   var convertI32PairToI53Checked = (lo, hi) => {
       assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
       assert(hi === (hi|0));                    // hi should be a i32
@@ -10353,10 +6992,10 @@ var ASM_CONSTS = {
     };
   function _fd_seek(fd,offset_low, offset_high,whence,newOffset) {
     var offset = convertI32PairToI53Checked(offset_low, offset_high);
-
-
+  
+    
   try {
-
+  
       if (isNaN(offset)) return 61;
       var stream = SYSCALLS.getStreamFromFD(fd);
       FS.llseek(stream, offset, whence);
@@ -10386,10 +7025,10 @@ var ASM_CONSTS = {
       }
       return ret;
     };
-
+  
   function _fd_write(fd, iov, iovcnt, pnum) {
   try {
-
+  
       var stream = SYSCALLS.getStreamFromFD(fd);
       var num = doWritev(stream, iov, iovcnt);
       HEAPU32[((pnum)>>2)] = num;
@@ -10402,8 +7041,8 @@ var ASM_CONSTS = {
 
 
 
-
-
+  
+  
   var stackAlloc = (sz) => __emscripten_stack_alloc(sz);
   var stringToUTF8OnStack = (str) => {
       var size = lengthBytesUTF8(str) + 1;
@@ -10420,8 +7059,8 @@ var ASM_CONSTS = {
         abort(e);
       }
     };
-
-
+  
+  
   var sigToWasmTypes = (sig) => {
       assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
       var typeNames = {
@@ -10442,21 +7081,21 @@ var ASM_CONSTS = {
       }
       return type;
     };
-
+  
   var runtimeKeepalivePush = () => {
       runtimeKeepaliveCounter += 1;
     };
-
+  
   var runtimeKeepalivePop = () => {
       assert(runtimeKeepaliveCounter > 0);
       runtimeKeepaliveCounter -= 1;
     };
-
-
+  
+  
   var Asyncify = {
   instrumentWasmImports(imports) {
         var importPattern = /^(invoke_.*|__asyncjs__.*)$/;
-
+  
         for (let [x, original] of Object.entries(imports)) {
           if (typeof original == 'function') {
             let isAsyncifyImport = original.isAsync || importPattern.test(x);
@@ -10547,7 +7186,7 @@ var ASM_CONSTS = {
           // the dbg() function itself can call back into WebAssembly to get the
           // current pthread_self() pointer).
           Asyncify.state = Asyncify.State.Normal;
-
+          
           // Keep the runtime alive so that a re-wind can be done later.
           runAndAbortIfError(_asyncify_stop_unwind);
           if (typeof Fibers != 'undefined') {
@@ -10599,7 +7238,7 @@ var ASM_CONSTS = {
         var func = Asyncify.getDataRewindFunc(name);
         // Once we have rewound and the stack we no longer need to artificially
         // keep the runtime alive.
-
+        
         return func();
       },
   handleSleep(startAsync) {
@@ -10811,7 +7450,6 @@ var _main = Module['_main'] = createExportWrapper('__main_argc_argv', 2);
 var _fflush = createExportWrapper('fflush', 1);
 var _memcpy = createExportWrapper('memcpy', 3);
 var _strerror = createExportWrapper('strerror', 1);
-var __emscripten_tempret_set = createExportWrapper('_emscripten_tempret_set', 1);
 var _emscripten_stack_init = () => (_emscripten_stack_init = wasmExports['emscripten_stack_init'])();
 var _emscripten_stack_get_free = () => (_emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'])();
 var _emscripten_stack_get_base = () => (_emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'])();
@@ -10836,7 +7474,7 @@ var _asyncify_start_unwind = createExportWrapper('asyncify_start_unwind', 1);
 var _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind', 0);
 var _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind', 1);
 var _asyncify_stop_rewind = createExportWrapper('asyncify_stop_rewind', 0);
-var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 2361988;
+var ___emscripten_embedded_file_data = Module['___emscripten_embedded_file_data'] = 6065432;
 
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===
