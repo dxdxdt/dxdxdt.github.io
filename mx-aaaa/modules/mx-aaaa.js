@@ -135,9 +135,12 @@ export class ResolveMXAAAA {
 		}
 
 		// Get all MX
+		let i = 0;
 		for (const domain of list) {
 			const q_mx = await resolver.resolve('MX', domain);
 			let has_a = 0, has_aaaa = 0;
+
+			this.onresolve('start', { domain: domain }, ret);
 
 			for (let mx of q_mx) {
 				// don't need the number part
@@ -183,6 +186,15 @@ export class ResolveMXAAAA {
 
 			ret.counts.has_a += has_a;
 			ret.counts.has_aaaa += has_aaaa;
+			i += 1;
+
+			this.onresolve('end', {
+				domain: domain,
+				progress: {
+					cur: i,
+					cnt: list.length
+				}
+			}, ret);
 		}
 
 		return ret;

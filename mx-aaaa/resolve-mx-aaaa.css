@@ -6,6 +6,10 @@ div.domainCard {
 	border-radius: 1ch;
 }
 
+div.beigeDomainCard {
+	background-color: beige;
+}
+
 div.redDomainCard {
 	background-color: red;
 }

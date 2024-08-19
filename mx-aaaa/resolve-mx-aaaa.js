@@ -6,6 +6,27 @@ const rt_output = document.getElementById('output');
 const i_txtlist = document.getElementById('txtlist');
 const rt_hlist = document.getElementById('hlist');
 
+let progressCounter = 0;
+let progress = {
+	cur: 0,
+	cnt: 0
+};
+
+function doProgressRender () {
+	const dots = '.'.repeat(progressCounter);
+	let progressStr;
+
+	if (progress.cnt > 0) {
+		const percent = (progress.cur / progress.cnt * 100).toFixed(2);
+		progressStr = `(${progress.cur}/${progress.cnt} ${percent})`;
+	}
+	else {
+		progressStr = '';
+	}
+	rt_status.innerText = `in progress ${progressStr} ${dots}`;
+	progressCounter = (progressCounter + 1) % 4;
+}
+
 function onresolvereducer (what, obj, map) {
 	try {
 		const cnt_mx = map.mxmap[obj.domain].mx.length;
@@ -19,21 +40,21 @@ function onresolvereducer (what, obj, map) {
 			else if ((cnt_a > 0 && cnt_mx !== cnt_a) ||
 					(cnt_aaaa > 0 && cnt_mx !== cnt_aaaa))
 			{
-				return ['redDomainCard', 'some mx missing'];
+				return 'redDomainCard';
 			}
 			else if (cnt_aaaa > 0) {
 				if (cnt_a > 0) {
-					return ['greenDomainCard', 'dual stack'];
+					return 'greenDomainCard';
 				}
 				else {
-					return ['magentaDomainCard', 'ipv6 only'];
+					return 'magentaDomainCard';
 				}
 			}
 			else if (cnt_a > 0) {
-				return ['yellowDomainCard', 'ipv4 only'];
+				return 'yellowDomainCard';
 			}
 			else {
-				return ['redDomainCard', 'no a or aaaa'];
+				return 'redDomainCard';
 			}
 		}
 
@@ -42,23 +63,21 @@ function onresolvereducer (what, obj, map) {
 		const statusLine = card.getElementsByClassName('domainStatus')[0];
 
 		statusLine.innerText = `mx: ${cnt_mx}, a: ${cnt_a}, aaaa: ${cnt_aaaa}`;
-		switch (what) {
-		case 'a':
-		case 'aaaa':
-			const d = determineCard();
-			if (d) {
-				card.classList = `domainCard ${d[0]}`;
-				statusLine.innerText += ` (${d[1]})`;
-			}
-			break;
-		}
 
+		if (what === 'end') {
+			const d = determineCard();
+
+			if (d) {
+				card.classList = `domainCard ${d}`;
+			}
+			progress = obj.progress;
+		}
 	}
 	catch (e) {
 		console.error(e);
 	}
 	finally {
-		rt_output.innerText += what + ': ' + JSON.stringify(obj) + '\n';
+		console.log(what + ': ' + JSON.stringify(obj) + '\n');
 	}
 }
 
@@ -70,10 +89,10 @@ function initCards (list) {
 
 		const statusLine = document.createElement('span');
 		statusLine.className = 'domainStatus';
-		statusLine.innerText = 'mx: 0, a: 0, aaaa: 0 (pending)';
+		statusLine.innerText = 'mx: 0, a: 0, aaaa: 0';
 
 		const card = document.createElement('div');
-		card.classList = 'domainCard redDomainCard';
+		card.classList = 'domainCard beigeDomainCard';
 		card.id = `resolve-mx-card-${domain}`;
 
 		rt_cardHolder.appendChild(card);
@@ -83,16 +102,9 @@ function initCards (list) {
 }
 
 new Promise(async function () {
-	let progressCounter = 0;
-	function doProgressRender () {
-		const dots = '.'.repeat(progressCounter);
-
-		rt_status.innerText = 'in progress ' + dots;
-		progressCounter = (progressCounter + 1) % 4;
-	}
+	const progressRenderTimer = setInterval(doProgressRender, 500);
 
 	doProgressRender();
-	const progressRenderTimer = setInterval(doProgressRender, 500);
 
 	try {
 		let txt = localStorage.getItem("domains");
@@ -116,7 +128,6 @@ new Promise(async function () {
 		const percent = (result.counts.has_aaaa / result.counts.mx * 100).toFixed(2);
 
 		rt_status.innerText = `SUCCESS: ${result.counts.has_aaaa} of ${result.counts.mx} service providers have AAAA (${percent}%)`;
-		rt_output.innerText += '\n';
 		rt_output.innerText += JSON.stringify(result, null, '\t');
 	}
 	catch (e) {
