@@ -1,0 +1,53 @@
+div.domainCard {
+	display: inline-block;
+	padding: 0.8em;
+	margin: 0.2em;
+	color: midnightblue;
+	border-radius: 1ch;
+}
+
+div.redDomainCard {
+	background-color: red;
+}
+
+div.greenDomainCard {
+	background-color: green;
+}
+
+div.yellowDomainCard {
+	background-color: yellow;
+}
+
+div.magentaDomainCard {
+	background-color: magenta;
+}
+
+p.domainSubtitle {
+	font-weight: bold;
+}
+
+span.domainStatus {}
+
+table.header {
+	width: 100%;
+}
+
+td {
+	vertical-align: top;
+}
+
+td.listContainer {
+	width: 80ch;
+}
+
+td.resultContainer {
+	width: max-content;
+}
+
+pre.result {
+	font-weight: bold;
+}
+
+div.header {
+	text-align: right;
+}

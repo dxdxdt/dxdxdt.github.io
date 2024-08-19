@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Resolve AAAA MX of popular email providers</title>
+	<script type="module" src="resolve-mx-aaaa.js"></script>
+	 <link rel="stylesheet" href="resolve-mx-aaaa.css">
+</head>
+<body>
+
+<h1>Resolve AAAA MX of popular email providers</h1>
+<div class="header">
+	<small>by David Timber &lt;dxdt@dev.snart.me&gt; (c) 2024</small>
+</div>
+<table class="header">
+<tbody>
+<tr>
+	<td class="listContainer">
+		<h2 id="hlist">List</h2>
+		<pre id="txtlist" contenteditable></pre>
+		<div>
+			<button type="submit" id="btn-listapply">Apply</button>
+			<button type="reset" id="btn-listreset">Reset</button>
+		</div>
+	</td>
+	<td class="resultContainer">
+		<h2>Result</h2>
+		<pre id="status" class="result">PRESTART</pre>
+		<div id="card-holder"></div>
+	</td>
+</tr>
+</tbody>
+</table>
+<div>
+	<h2>Output</h2>
+	<pre id="output"></pre>
+</div>
+
+</body>
+</html>

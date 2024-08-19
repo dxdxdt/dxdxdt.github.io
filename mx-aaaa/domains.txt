@@ -1,0 +1,46 @@
+# US
+## Amazon WorkMail
+gemings.awsapps.com
+## att.net
+att.net
+## Exchange (Office365)
+glockapps.tech
+## G Suite
+buyemailsoftware.com
+## gmx.com
+gmx.com
+## mailo.com
+mailo.com
+## Zoho
+zohomail.eu
+
+# AOL
+#aol.com
+## Gmail
+gmail.com
+## Hotmail
+hotmail.com
+## Outlook
+outlook.com
+## Yahoo
+yahoo.com
+
+# Europe
+proton.me
+seznam.cz
+laposte.net
+freenet.de
+gmx.de
+web.de
+interia.pl
+o2.pl
+onet.pl
+ukr.net
+
+# Russia
+mail.ru
+rambler.ru
+yandex.ru
+
+# Asia
+naver.com
