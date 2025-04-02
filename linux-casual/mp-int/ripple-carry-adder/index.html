@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Ripple-carry adder, interactive</title>
+	<link rel="stylesheet" href="index.css">
+	<script src="index.js"></script>
+</head>
+<body>
+
+<p class="svg-container">
+	<object type="image/svg+xml" id="svg_the-math" data="the-math.svg"></object>
+</p>
+<p class="svg-container">
+	<object type="image/svg+xml" id="svg_adder" data="animation-skel.svg"></object>
+</p>
+
+<hr>
+<h2>Programmer</h2>
+
+<div class="op-console-container">
+	<fieldset>
+		<legend>OP</legend>
+		<div title="Add A and B, store result in A">
+			<input type="radio" id="radio_op-add" name="op" value="add" checked>
+			<label for="radio_op-add">ADD</label>
+		</div>
+		<div title="Add A and B with the carry bit from the state register, store result in A">
+			<input type="radio" id="radio_op-adc" name="op" value="adc">
+			<label for="radio_op-add">ADC</label>
+		</div>
+	</fieldset>
+
+	<fieldset class="operand-container">
+		<legend>Operand</legend>
+		<div>
+			<label for="txt_operand-a">A</label>
+			<input type="text" size="10" id="txt_operand-a">
+			<span class="ovf" id="span_operand-a">🛑 error</span>
+		</div>
+		<div>
+			<label for="txt_operand-b">B</label>
+			<input type="text" size="10" id="txt_operand-b">
+			<span class="ovf" id="span_operand-b">🛑 error</span>
+		</div>
+	</fieldset>
+
+	<fieldset>
+		<legend>ACT</legend>
+		<button type="button" id="btn_exec" title="Start the animation">Execute</button><br>
+		<button type="button" id="btn_reset" title="Reset the animation">Reset</button>
+	</fieldset>
+
+	<p>
+	<fieldset>
+		<legend>Animations</legend>
+		<label for="txt_state-animations">Animations</label>
+		<input type="text" id="txt_state-animations" size="30"><br>
+		<label for="txt_state-change-delay">State change delay(ms)</label>
+		<input type="number" id="txt_state-change-delay"><br>
+		<button type="button" id="btn_animation-defaults">Defaults</button>
+	</fieldset>
+</div>
+
+</body>
+</html>

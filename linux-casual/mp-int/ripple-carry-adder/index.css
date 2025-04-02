@@ -1,0 +1,16 @@
+fieldset {
+	display: inline-block;
+}
+
+.svg-container {
+	text-align: center;
+}
+
+fieldset {
+	font-family: monospace;
+}
+
+.ovf {
+	color: red;
+	opacity: 0;
+}
